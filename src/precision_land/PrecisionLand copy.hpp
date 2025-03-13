@@ -20,17 +20,12 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
 #include <vector>
-#include <std_msgs/msg/bool.hpp>
-#include <std_msgs/msg/int32.hpp> 
-#include <std_msgs/msg/float64.hpp>
 
 class PrecisionLand : public px4_ros2::ModeBase
 {
 public:
 	explicit PrecisionLand(rclcpp::Node& node);
 
-	void aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg);
-	void isLoadedCallback(const std_msgs::msg::Bool::SharedPtr msg);
 	void targetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 	void vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg);
 
@@ -70,13 +65,8 @@ private:
 
 	// ros2
 	rclcpp::Node& _node;
-	rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr _aruco_id_sub;
-	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _isloaded_sub;
 	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_sub;
 	rclcpp::Subscription<px4_msgs::msg::VehicleLandDetected>::SharedPtr _vehicle_land_detected_sub;
-
-	rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr _precision_hovering_done_pub;
-	rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr _current_altitude_pub;
 
 	// px4_ros2_cpp
 	std::shared_ptr<px4_ros2::OdometryLocalPosition> _vehicle_local_position;
@@ -101,7 +91,6 @@ private:
 	int _search_waypoint_index = 0;
 
 	// Parameters
-	float _param_ascent_vel = {};
     float _param_descent_vel = {};
     float _param_vel_p_gain = {};
     float _param_vel_i_gain = {};
@@ -116,13 +105,4 @@ private:
 	// for attach (gripper)
 	float _target_hover_altitude = 0.5f; // Target hover altitude (0.5 meters above ArUco marker)
 	double z_from_aruco;  // Add this line to store the original_z
-	std_msgs::msg::Float64 altitude_msg;
-	std_msgs::msg::Bool done_msg;
-	bool isloaded = false;
-	int aruco_id = 0;
-	float target_z = 0.4;
-	float current_altitude = 0.0;
-	float descent_vel_tune = 0.0;
-	float loaded_robot_z = 0.5;
-	float loaded_land_z = 0.7;
 };

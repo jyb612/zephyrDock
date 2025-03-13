@@ -19,35 +19,51 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
 	: ModeBase(node, kModeName)
 	, _node(node)
 {
-
+	auto qos = rclcpp::QoS(1).best_effort();
+	
 	_trajectory_setpoint = std::make_shared<px4_ros2::TrajectorySetpointType>(*this);
 
 	_vehicle_local_position = std::make_shared<px4_ros2::OdometryLocalPosition>(*this);
 
 	_vehicle_attitude = std::make_shared<px4_ros2::OdometryAttitude>(*this);
 
-	_aruco_id_sub = _node.create_subscription<std_msgs::msg::Int32>(
-        "/aruco_id", 10, std::bind(&PrecisionLand::aruco_id_callback, this, std::placeholders::_1));
+	_target_pose_sub_color = _node.create_subscription<geometry_msgs::msg::PoseStamped>(
+		"/target_pose_color", qos,
+		[this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+			this->targetPoseCallbackColor(msg);
+		});
 
-	_isloaded_sub = _node.create_subscription<std_msgs::msg::Bool>("/isloaded", 
-			10, std::bind(&PrecisionLand::isLoadedCallback, this, std::placeholders::_1));
+	_target_pose_sub_bnw = _node.create_subscription<geometry_msgs::msg::PoseStamped>(
+		"/target_pose_bnw", qos,
+		[this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+			this->targetPoseCallbackBnW(msg);
+		});
 
-	_target_pose_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>("/target_pose",
-			   rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetPoseCallback, this, std::placeholders::_1));
+	// Subscribe to camera selector
+	_camera_selector_sub = _node.create_subscription<std_msgs::msg::String>(
+		"/selected_camera", qos,
+		[this](const std_msgs::msg::String::SharedPtr msg) {
+			this->cameraSelectorCallback(msg);
+		});
 
-	_vehicle_land_detected_sub = _node.create_subscription<px4_msgs::msg::VehicleLandDetected>("/fmu/out/vehicle_land_detected",
-			   rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::vehicleLandDetectedCallback, this, std::placeholders::_1));
+	// Subscribe to vehicle land detection
+	_vehicle_land_detected_sub = _node.create_subscription<px4_msgs::msg::VehicleLandDetected>(
+		"/fmu/out/vehicle_land_detected", qos,
+		[this](const px4_msgs::msg::VehicleLandDetected::SharedPtr msg) {
+			this->vehicleLandDetectedCallback(msg);
+		});
 
-	_precision_hovering_done_pub = _node.create_publisher<std_msgs::msg::Bool>("/precision_hovering_done", 10);
-
-	_current_altitude_pub = _node.create_publisher<std_msgs::msg::Float64>("/current_altitude", 10);
+	_angle_sub = _node.create_subscription<std_msgs::msg::Float64MultiArray>(
+		"/angle_topic", rclcpp::QoS(1).best_effort(),
+		std::bind(&PrecisionLand::angleCallback, this, std::placeholders::_1));
+		
+		
 
 	loadParameters();
 }
 
 void PrecisionLand::loadParameters()
 {
-	_node.declare_parameter<float>("ascent_vel", -1.0);
 	_node.declare_parameter<float>("descent_vel", 1.0);
 	_node.declare_parameter<float>("vel_p_gain", 1.5);
 	_node.declare_parameter<float>("vel_i_gain", 0.0);
@@ -56,7 +72,6 @@ void PrecisionLand::loadParameters()
 	_node.declare_parameter<float>("delta_position", 0.25);
 	_node.declare_parameter<float>("delta_velocity", 0.25);
 
-	_node.get_parameter("ascent_vel", _param_ascent_vel);
 	_node.get_parameter("descent_vel", _param_descent_vel);
 	_node.get_parameter("vel_p_gain", _param_vel_p_gain);
 	_node.get_parameter("vel_i_gain", _param_vel_i_gain);
@@ -65,33 +80,68 @@ void PrecisionLand::loadParameters()
 	_node.get_parameter("delta_position", _param_delta_position);
 	_node.get_parameter("delta_velocity", _param_delta_velocity);
 
-	RCLCPP_INFO(_node.get_logger(), "ascent_vel: %f", _param_ascent_vel);
 	RCLCPP_INFO(_node.get_logger(), "descent_vel: %f", _param_descent_vel);
 	RCLCPP_INFO(_node.get_logger(), "vel_i_gain: %f", _param_vel_i_gain);
 }
 
-void PrecisionLand::aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg)
+void PrecisionLand::angleCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
 {
-    aruco_id = msg->data;
-}
+    if (!msg->data.empty()) {
+        _angle_value = msg->data[0];  // Extract first element
+        // RCLCPP_INFO(_node.get_logger(), "Received angle: %f", _angle_value);
 
-void PrecisionLand::isLoadedCallback(const std_msgs::msg::Bool::SharedPtr msg)
-{
-    // Process the received boolean message
-    if (msg->data) {
-        isloaded = true;
+        // ✅ Example calculation: Convert to radians
+        double angle_radians = _angle_value * M_PI / 180.0;
+
+		// Compute sin²(angle)
+		double sin_squared = std::pow(std::sin(angle_radians), 2);
+
+		_y_offset = _cclength * sin_squared;
+		_z_offset = std::sin(angle_radians) * std::cos(angle_radians) * _cclength;
+
     } else {
-        isloaded = false;
+        RCLCPP_WARN(_node.get_logger(), "Received empty angle message");
     }
 }
 
-void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg)
+
+
+void PrecisionLand::cameraSelectorCallback(const std_msgs::msg::String::SharedPtr msg)
 {
-	_land_detected = msg->landed;
+	_selected_camera = msg->data;
+	RCLCPP_INFO(_node.get_logger(), "Switched to: %s", _selected_camera.c_str());
 }
 
-void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+void PrecisionLand::targetPoseCallbackColor(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
+	if (_selected_camera != "/color_camera") {
+		return;
+	}
+	// RCLCPP_INFO(_node.get_logger(), "Processing target pose from Color Camera");
+	auto tag = ArucoTag {
+		// .position = Eigen::Vector3d(msg->pose.position.x + _x_offset, 
+		// 							msg->pose.position.y + _y_offset, 
+		// 							msg->pose.position.z + _z_offset),
+		.position = Eigen::Vector3d(msg->pose.position.x, 
+									msg->pose.position.y, 
+									msg->pose.position.z),
+		.orientation = Eigen::Quaterniond(msg->pose.orientation.w, 
+										msg->pose.orientation.x, 
+										msg->pose.orientation.y, 
+										msg->pose.orientation.z),
+		.timestamp = _node.now(),
+	};
+
+	// Save tag position/orientation in NED world frame
+	_tag = getTagWorld(tag);
+}
+
+void PrecisionLand::targetPoseCallbackBnW(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+{
+	if (_selected_camera != "/bnw_camera") {
+		return;
+	}
+	// RCLCPP_INFO(_node.get_logger(), "Processing target pose from BnW Camera");
 	auto tag = ArucoTag {
 		.position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
 		.orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
@@ -100,6 +150,11 @@ void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::PoseStamped::Sh
 
 	// Save tag position/orientation in NED world frame
 	_tag = getTagWorld(tag);
+}
+
+void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg)
+{
+	_land_detected = msg->landed;
 }
 
 PrecisionLand::ArucoTag PrecisionLand::getTagWorld(const ArucoTag& tag)
@@ -209,51 +264,22 @@ void PrecisionLand::updateSetpoint(float dt_s)
 			switchToState(State::Idle);
 			return;
 		}
-		Eigen::Vector2f vel = calculateVelocitySetpointXY();
-		current_altitude = -(_vehicle_local_position->positionNed().z() - _tag.position.z());
-		if (aruco_id == 3)	// loaded
-			target_z = loaded_robot_z;
-		else{
-			if (aruco_id == 1)
-			target_z = loaded_land_z;
+
+		float target_z = -(_vehicle_local_position->positionNed().z() - _tag.position.z());
+		RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _vehicle_local_position->positionNed().z(), _tag.position.z(), target_z);
+
+		if (target_z <= 0.7) {
+			_trajectory_setpoint->update(Eigen::Vector3f(0, 0, 0), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
+			RCLCPP_INFO(_node.get_logger(), "Reached target altitude at %f meters. Hovering now.", static_cast<double>(target_z));
+
+			// Transition to Hover state after descent
+			switchToState(State::Hover);
 		}
-			
-		
-		if (aruco_id == 0){
+		else {
 			Eigen::Vector2f vel = calculateVelocitySetpointXY();
 			_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
+		}
 
-			if (_land_detected) {
-				switchToState(State::Finished);
-			}
-		}
-		else{
-			descent_vel_tune = 0.5;
-			// RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _vehicle_local_position->positionNed().z(), _tag.position.z(), current_altitude);
-			
-			if (current_altitude <= target_z + 0.05f && current_altitude >= target_z - 0.05f) {
-				_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), 0), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
-				RCLCPP_INFO(_node.get_logger(), "Reached target altitude at %.2f meters. Hovering now.", current_altitude);
-		
-				// Transition to Hover state after descent
-				switchToState(State::Hover);
-			}
-			// If LiDAR altitude is above the target, continue descending
-			else if (current_altitude > target_z + 1.00f) {
-				_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
-			}
-			else if (current_altitude > target_z + 0.05f) {
-				_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel*descent_vel_tune), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
-			}
-			// If LiDAR altitude is below the target, ascend
-			else if (current_altitude < target_z - 0.05f) {
-				_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_ascent_vel*descent_vel_tune), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
-			}
-			
-			altitude_msg.data = current_altitude;
-			_current_altitude_pub->publish(altitude_msg);
-			// RCLCPP_INFO(_node.get_logger(), "altitude published.");
-		}
 		break;
 	}
 
@@ -265,46 +291,13 @@ void PrecisionLand::updateSetpoint(float dt_s)
 			return;
 		}
 
+		// Continue aligning with the marker while hovering
 		Eigen::Vector2f vel = calculateVelocitySetpointXY();
-		current_altitude = -(_vehicle_local_position->positionNed().z() - _tag.position.z());
-		if (aruco_id == 3)	// loaded
-			target_z = loaded_robot_z;
-		else{
-			if (aruco_id == 1)
-				target_z = loaded_land_z;
-		}
-		descent_vel_tune = 0.5;
+		_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), 0), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 
-		// RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _vehicle_local_position->positionNed().z(), _tag.position.z(), current_altitude);
-		// Get LiDAR reading for hover control
-		RCLCPP_INFO(_node.get_logger(), "Hovering at LiDAR altitude: %.2f meters", current_altitude);
-	
-		// If LiDAR reading is within tolerance of 5 cm, maintain hover
-		if (current_altitude > target_z + 1.00f) {
-			// If too high, descend slightly
-			_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
-		}
-		else if (current_altitude > target_z + 0.05f) {
-			// If too low, ascend slightly
-			_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel*descent_vel_tune), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
-		}
-		else if (current_altitude < target_z - 0.2f) {
-			// If too low, ascend slightly
-			_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_ascent_vel), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
-		}
-		else if (current_altitude < target_z - 0.05f) {
-			// If too low, ascend slightly
-			_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_ascent_vel*descent_vel_tune), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
-		}
-		else {
-			// Maintain hover within ±5 cm of target altitude
-			_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), 0), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
-			done_msg.data = true;
-			_precision_hovering_done_pub->publish(done_msg);
-			RCLCPP_INFO(_node.get_logger(), "Custom mode completed. Published true to /custom_mode_done.");
-		}
 		break;
 	}
+
 
 	case State::Finished: {
 		ModeBase::completed(px4_ros2::Result::Success);
