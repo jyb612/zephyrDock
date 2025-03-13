@@ -1,0 +1,20 @@
+image_width: 640
+image_height: 480
+camera_name: bnw_camera  # Set the camera name to match your black-and-white camera
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [752.3619268367931, 0.0, 314.4457885369666, 0.0, 749.4775003821243, 253.9352274687957, 0.0, 0.0, 1.0]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.10553694970008147, -0.2432047726240569, 0.003687689802426831, -0.0021777094264947006, 0.0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [762.2401342845199, 0.0, 313.43408338425763, 0.0, 0.0, 759.066455934995, 255.14015175402574, 0.0, 0.0, 0.0, 1.0, 0.0]
