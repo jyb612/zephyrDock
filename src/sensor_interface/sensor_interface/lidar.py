@@ -12,7 +12,7 @@ class TFMiniLidarNode(Node):
         self.strength_publisher = self.create_publisher(Float32, '/tfmini/strength', 10)
 
         # Setup serial communication
-        self.serial_port = serial.Serial("/dev/ttyTHS1", 115200, timeout=0.1)
+        self.serial_port = serial.Serial("/dev/ttyUSB0", 115200, timeout=0.1)
         self.timer = self.create_timer(0.1, self.get_tfmini_data)  # 10Hz polling rate
 
     def get_tfmini_data(self):

@@ -9,7 +9,7 @@ class ServoController(Node):
         super().__init__('servo_controller')
 
         # Define Serial Modbus Connection
-        self.servo_port = "/dev/ttyUSB0"  # Change this to the correct port
+        self.servo_port = "/dev/ttyUSB1"  # Change this to the correct port
         self.baud_rate = 115200
         self.client = None
         self.connected = False

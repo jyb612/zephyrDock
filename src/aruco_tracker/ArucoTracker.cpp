@@ -16,31 +16,33 @@ ArucoTrackerNode::ArucoTrackerNode()
 	_detector = std::make_unique<cv::aruco::ArucoDetector>(dictionary, detectorParams);
 	auto qos = rclcpp::QoS(1).best_effort();
 	
-	// std::string image_topic = _camera_namespace.empty() 
-    //         ? "/image_raw" 
-    //         : _camera_namespace + "/image_raw";
+	std::string image_topic = _camera_namespace.empty() 
+            ? "/image_raw" 
+            : _camera_namespace + "/image_raw";
         
-	// std::string camera_info_topic = _camera_namespace.empty()
-	// 	? "/camera_info"
-	// 	: _camera_namespace + "/camera_info";
+	std::string camera_info_topic = _camera_namespace.empty()
+		? "/camera_info"
+		: _camera_namespace + "/camera_info";
 
 	
 
-	// _image_sub = create_subscription<sensor_msgs::msg::Image>(
-    //         image_topic, qos, 
-    //         std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1)
-    //     );
+	_image_sub = create_subscription<sensor_msgs::msg::Image>(
+            image_topic, qos, 
+            std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1)
+        );
 
-	// _camera_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(
-	// 	camera_info_topic, qos, 
-	// 	std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1)
-	// );
+	_camera_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(
+		camera_info_topic, qos, 
+		std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1)
+	);
 
-	_image_sub = this->create_subscription<sensor_msgs::msg::Image>(
-			     "/camera", qos, std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
+	// _image_sub = this->create_subscription<sensor_msgs::msg::Image>(
+	// 		     "/camera", qos, std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
 
-	_camera_info_sub = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-				   "/camera_info", qos, std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
+	// _camera_info_sub = this->create_subscription<sensor_msgs::msg::CameraInfo>(
+	// 			   "/camera_info", qos, std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
+	
+	
 	// New subscriptions for dynamic parameter updates
     _aruco_id_sub = this->create_subscription<std_msgs::msg::Int32>(
         "/aruco_id", qos, std::bind(&ArucoTrackerNode::aruco_id_callback, this, std::placeholders::_1));

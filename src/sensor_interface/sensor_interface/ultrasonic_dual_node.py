@@ -13,7 +13,7 @@ class DualUltrasonicNode(Node):
         super().__init__('ultrasonic_dual_node')
 
         # Initialize I2C bus 1 (on Jetson Orin Nano)
-        self.bus = smbus2.SMBus(1)
+        self.bus = smbus2.SMBus(7)
 
         # Create ROS2 publishers for both sensors
         self.publisher_left = self.create_publisher(Float32, '/gyus42v2/left_range', 10)
