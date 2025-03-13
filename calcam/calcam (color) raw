@@ -1,0 +1,133 @@
+(camera_cal_env) junyan@junyan-nh5xax-ubuntu:~$ ros2 run camera_calibration cameracalibrator --size 6x8 --square 0.015 --ros-args -r image:=/image_raw -r camera_info:=/camera_info --ros-args -p stereo:=false
+Waiting for service camera/set_camera_info ...
+OK
+Waiting for service left_camera/set_camera_info ...
+OK
+Waiting for service right_camera/set_camera_info ...
+OK
+[WARN] [1738562792.682254348] [cameracalibrator]: No publishers available for topic /left. Using system default QoS for subscriber.
+[WARN] [1738562792.687845237] [cameracalibrator]: No publishers available for topic /right. Using system default QoS for subscriber.
+*** Added sample 1, p_x = 0.776, p_y = 0.366, p_size = 0.132, skew = 0.071
+*** Added sample 2, p_x = 0.762, p_y = 0.405, p_size = 0.148, skew = 0.211
+*** Added sample 3, p_x = 0.683, p_y = 0.334, p_size = 0.156, skew = 0.159
+*** Added sample 4, p_x = 0.587, p_y = 0.289, p_size = 0.163, skew = 0.096
+*** Added sample 5, p_x = 0.475, p_y = 0.227, p_size = 0.174, skew = 0.071
+*** Added sample 6, p_x = 0.360, p_y = 0.145, p_size = 0.181, skew = 0.078
+*** Added sample 7, p_x = 0.248, p_y = 0.103, p_size = 0.182, skew = 0.023
+*** Added sample 8, p_x = 0.063, p_y = 0.099, p_size = 0.184, skew = 0.011
+*** Added sample 9, p_x = 0.435, p_y = 0.375, p_size = 0.183, skew = 0.067
+*** Added sample 10, p_x = 0.635, p_y = 0.429, p_size = 0.183, skew = 0.107
+*** Added sample 11, p_x = 0.716, p_y = 0.520, p_size = 0.186, skew = 0.139
+*** Added sample 12, p_x = 0.727, p_y = 0.700, p_size = 0.192, skew = 0.151
+*** Added sample 13, p_x = 0.735, p_y = 0.823, p_size = 0.192, skew = 0.079
+*** Added sample 14, p_x = 0.786, p_y = 0.721, p_size = 0.218, skew = 0.049
+*** Added sample 15, p_x = 0.780, p_y = 0.533, p_size = 0.211, skew = 0.035
+*** Added sample 16, p_x = 0.760, p_y = 0.252, p_size = 0.210, skew = 0.080
+*** Added sample 17, p_x = 0.749, p_y = 0.079, p_size = 0.211, skew = 0.096
+*** Added sample 18, p_x = 0.705, p_y = 0.012, p_size = 0.197, skew = 0.276
+*** Added sample 19, p_x = 0.705, p_y = 0.135, p_size = 0.190, skew = 0.360
+*** Added sample 20, p_x = 0.709, p_y = 0.244, p_size = 0.185, skew = 0.447
+*** Added sample 21, p_x = 0.707, p_y = 0.309, p_size = 0.164, skew = 0.814
+*** Added sample 22, p_x = 0.717, p_y = 0.223, p_size = 0.172, skew = 0.681
+*** Added sample 23, p_x = 0.724, p_y = 0.223, p_size = 0.193, skew = 0.268
+*** Added sample 24, p_x = 0.791, p_y = 0.154, p_size = 0.218, skew = 0.015
+*** Added sample 25, p_x = 0.880, p_y = 0.180, p_size = 0.294, skew = 0.003
+*** Added sample 26, p_x = 0.832, p_y = 0.238, p_size = 0.344, skew = 0.049
+*** Added sample 27, p_x = 0.687, p_y = 0.277, p_size = 0.358, skew = 0.052
+*** Added sample 28, p_x = 0.629, p_y = 0.234, p_size = 0.435, skew = 0.027
+*** Added sample 29, p_x = 0.688, p_y = 0.208, p_size = 0.520, skew = 0.062
+*** Added sample 30, p_x = 0.795, p_y = 0.247, p_size = 0.531, skew = 0.107
+*** Added sample 31, p_x = 0.733, p_y = 0.115, p_size = 0.538, skew = 0.107
+*** Added sample 32, p_x = 0.559, p_y = 0.243, p_size = 0.530, skew = 0.093
+*** Added sample 33, p_x = 0.464, p_y = 0.311, p_size = 0.555, skew = 0.114
+*** Added sample 34, p_x = 0.369, p_y = 0.282, p_size = 0.638, skew = 0.106
+*** Added sample 35, p_x = 0.295, p_y = 0.217, p_size = 0.693, skew = 0.114
+*** Added sample 36, p_x = 0.476, p_y = 0.250, p_size = 0.662, skew = 0.062
+*** Added sample 37, p_x = 0.502, p_y = 0.098, p_size = 0.687, skew = 0.058
+*** Added sample 38, p_x = 0.594, p_y = 0.165, p_size = 0.673, skew = 0.087
+*** Added sample 39, p_x = 0.618, p_y = 0.347, p_size = 0.296, skew = 0.043
+*** Added sample 40, p_x = 0.641, p_y = 0.216, p_size = 0.141, skew = 0.036
+*** Added sample 41, p_x = 0.726, p_y = 0.450, p_size = 0.145, skew = 0.004
+*** Added sample 42, p_x = 0.766, p_y = 0.891, p_size = 0.146, skew = 0.021
+*** Added sample 43, p_x = 0.759, p_y = 0.667, p_size = 0.147, skew = 0.002
+*** Added sample 44, p_x = 0.879, p_y = 0.428, p_size = 0.147, skew = 0.043
+*** Added sample 45, p_x = 0.611, p_y = 0.368, p_size = 0.151, skew = 0.010
+*** Added sample 46, p_x = 0.640, p_y = 0.360, p_size = 0.139, skew = 0.275
+*** Added sample 47, p_x = 0.645, p_y = 0.345, p_size = 0.136, skew = 0.459
+*** Added sample 48, p_x = 0.827, p_y = 0.593, p_size = 0.155, skew = 0.230
+*** Added sample 49, p_x = 0.856, p_y = 0.716, p_size = 0.151, skew = 0.336
+*** Added sample 50, p_x = 0.894, p_y = 0.886, p_size = 0.133, skew = 0.434
+**** Calibrating ****
+mono pinhole calibration...
+D = [0.11736713046489307, -0.29983196150309804, -0.002540038932615341, -0.001660299072962721, 0.0]
+K = [743.5378679687802, 0.0, 336.78716352445986, 0.0, 743.2765213205552, 221.90175895528495, 0.0, 0.0, 1.0]
+R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+P = [752.7818424198737, 0.0, 336.16056472257645, 0.0, 0.0, 752.3496222637059, 221.10724529158986, 0.0, 0.0, 0.0, 1.0, 0.0]
+None
+# oST version 5.0 parameters
+
+
+[image]
+
+width
+640
+
+height
+480
+
+[narrow_stereo]
+
+camera matrix
+743.537868 0.000000 336.787164
+0.000000 743.276521 221.901759
+0.000000 0.000000 1.000000
+
+distortion
+0.117367 -0.299832 -0.002540 -0.001660 0.000000
+
+rectification
+1.000000 0.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 0.000000 1.000000
+
+projection
+752.781842 0.000000 336.160565 0.000000
+0.000000 752.349622 221.107245 0.000000
+0.000000 0.000000 1.000000 0.000000
+
+('Wrote calibration data to', '/tmp/calibrationdata.tar.gz')
+D = [0.11736713046489307, -0.29983196150309804, -0.002540038932615341, -0.001660299072962721, 0.0]
+K = [743.5378679687802, 0.0, 336.78716352445986, 0.0, 743.2765213205552, 221.90175895528495, 0.0, 0.0, 1.0]
+R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+P = [752.7818424198737, 0.0, 336.16056472257645, 0.0, 0.0, 752.3496222637059, 221.10724529158986, 0.0, 0.0, 0.0, 1.0, 0.0]
+# oST version 5.0 parameters
+
+
+[image]
+
+width
+640
+
+height
+480
+
+[narrow_stereo]
+
+camera matrix
+743.537868 0.000000 336.787164
+0.000000 743.276521 221.901759
+0.000000 0.000000 1.000000
+
+distortion
+0.117367 -0.299832 -0.002540 -0.001660 0.000000
+
+rectification
+1.000000 0.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 0.000000 1.000000
+
+projection
+752.781842 0.000000 336.160565 0.000000
+0.000000 752.349622 221.107245 0.000000
+0.000000 0.000000 1.000000 0.000000
+

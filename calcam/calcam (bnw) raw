@@ -1,0 +1,121 @@
+
+(camera_cal_env) junyan@junyan-nh5xax-ubuntu:~$ ros2 run camera_calibration cameracalibrator --size 6x8 --square 0.015 --ros-args -r image:=/image_raw -r camera_info:=/camera_info --ros-args -p stereo:=false
+Waiting for service camera/set_camera_info ...
+OK
+Waiting for service left_camera/set_camera_info ...
+OK
+Waiting for service right_camera/set_camera_info ...
+OK
+[WARN] [1738563527.393312120] [cameracalibrator]: No publishers available for topic /left. Using system default QoS for subscriber.
+[WARN] [1738563527.395612760] [cameracalibrator]: No publishers available for topic /right. Using system default QoS for subscriber.
+*** Added sample 1, p_x = 0.903, p_y = 0.596, p_size = 0.140, skew = 0.216
+*** Added sample 2, p_x = 0.909, p_y = 0.594, p_size = 0.145, skew = 0.426
+*** Added sample 3, p_x = 0.933, p_y = 0.613, p_size = 0.154, skew = 0.591
+*** Added sample 4, p_x = 0.917, p_y = 0.701, p_size = 0.188, skew = 0.380
+*** Added sample 5, p_x = 0.805, p_y = 0.589, p_size = 0.180, skew = 0.068
+*** Added sample 6, p_x = 0.775, p_y = 0.535, p_size = 0.160, skew = 0.372
+*** Added sample 7, p_x = 0.756, p_y = 0.479, p_size = 0.154, skew = 0.237
+*** Added sample 8, p_x = 0.744, p_y = 0.419, p_size = 0.150, skew = 0.082
+*** Added sample 9, p_x = 0.735, p_y = 0.263, p_size = 0.145, skew = 0.126
+*** Added sample 10, p_x = 0.733, p_y = 0.119, p_size = 0.143, skew = 0.201
+*** Added sample 11, p_x = 0.923, p_y = 0.124, p_size = 0.141, skew = 0.188
+*** Added sample 12, p_x = 0.641, p_y = 0.115, p_size = 0.140, skew = 0.093
+*** Added sample 13, p_x = 0.497, p_y = 0.116, p_size = 0.139, skew = 0.038
+*** Added sample 14, p_x = 0.380, p_y = 0.052, p_size = 0.140, skew = 0.005
+*** Added sample 15, p_x = 0.244, p_y = 0.061, p_size = 0.138, skew = 0.060
+*** Added sample 16, p_x = 0.126, p_y = 0.035, p_size = 0.139, skew = 0.118
+*** Added sample 17, p_x = 0.668, p_y = 0.559, p_size = 0.131, skew = 0.012
+*** Added sample 18, p_x = 0.663, p_y = 0.739, p_size = 0.150, skew = 0.007
+*** Added sample 19, p_x = 0.689, p_y = 0.028, p_size = 0.175, skew = 0.130
+*** Added sample 20, p_x = 0.823, p_y = 0.231, p_size = 0.219, skew = 0.135
+*** Added sample 21, p_x = 0.869, p_y = 0.334, p_size = 0.252, skew = 0.173
+*** Added sample 22, p_x = 0.881, p_y = 0.354, p_size = 0.239, skew = 0.351
+*** Added sample 23, p_x = 0.890, p_y = 0.328, p_size = 0.237, skew = 0.526
+*** Added sample 24, p_x = 0.886, p_y = 0.272, p_size = 0.238, skew = 0.674
+*** Added sample 25, p_x = 0.795, p_y = 0.247, p_size = 0.219, skew = 0.750
+*** Added sample 26, p_x = 0.760, p_y = 0.256, p_size = 0.201, skew = 0.906
+*** Added sample 27, p_x = 0.804, p_y = 0.316, p_size = 0.248, skew = 0.428
+*** Added sample 28, p_x = 0.776, p_y = 0.316, p_size = 0.251, skew = 0.078
+*** Added sample 29, p_x = 0.676, p_y = 0.278, p_size = 0.237, skew = 0.167
+*** Added sample 30, p_x = 0.712, p_y = 0.237, p_size = 0.220, skew = 0.405
+*** Added sample 31, p_x = 0.752, p_y = 0.211, p_size = 0.239, skew = 0.276
+*** Added sample 32, p_x = 0.782, p_y = 0.342, p_size = 0.359, skew = 0.181
+*** Added sample 33, p_x = 0.724, p_y = 0.402, p_size = 0.436, skew = 0.187
+*** Added sample 34, p_x = 0.754, p_y = 0.476, p_size = 0.507, skew = 0.214
+*** Added sample 35, p_x = 0.806, p_y = 0.544, p_size = 0.571, skew = 0.240
+*** Added sample 36, p_x = 0.678, p_y = 0.333, p_size = 0.401, skew = 0.124
+*** Added sample 37, p_x = 0.642, p_y = 0.258, p_size = 0.329, skew = 0.102
+*** Added sample 38, p_x = 0.598, p_y = 0.237, p_size = 0.217, skew = 0.076
+**** Calibrating ****
+mono pinhole calibration...
+D = [0.10553694970008147, -0.2432047726240569, 0.003687689802426831, -0.0021777094264947006, 0.0]
+K = [752.3619268367931, 0.0, 314.4457885369666, 0.0, 749.4775003821243, 253.9352274687957, 0.0, 0.0, 1.0]
+R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+P = [762.2401342845199, 0.0, 313.43408338425763, 0.0, 0.0, 759.066455934995, 255.14015175402574, 0.0, 0.0, 0.0, 1.0, 0.0]
+None
+# oST version 5.0 parameters
+
+
+[image]
+
+width
+640
+
+height
+480
+
+[narrow_stereo]
+
+camera matrix
+752.361927 0.000000 314.445789
+0.000000 749.477500 253.935227
+0.000000 0.000000 1.000000
+
+distortion
+0.105537 -0.243205 0.003688 -0.002178 0.000000
+
+rectification
+1.000000 0.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 0.000000 1.000000
+
+projection
+762.240134 0.000000 313.434083 0.000000
+0.000000 759.066456 255.140152 0.000000
+0.000000 0.000000 1.000000 0.000000
+
+('Wrote calibration data to', '/tmp/calibrationdata.tar.gz')
+D = [0.10553694970008147, -0.2432047726240569, 0.003687689802426831, -0.0021777094264947006, 0.0]
+K = [752.3619268367931, 0.0, 314.4457885369666, 0.0, 749.4775003821243, 253.9352274687957, 0.0, 0.0, 1.0]
+R = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+P = [762.2401342845199, 0.0, 313.43408338425763, 0.0, 0.0, 759.066455934995, 255.14015175402574, 0.0, 0.0, 0.0, 1.0, 0.0]
+# oST version 5.0 parameters
+
+
+[image]
+
+width
+640
+
+height
+480
+
+[narrow_stereo]
+
+camera matrix
+752.361927 0.000000 314.445789
+0.000000 749.477500 253.935227
+0.000000 0.000000 1.000000
+
+distortion
+0.105537 -0.243205 0.003688 -0.002178 0.000000
+
+rectification
+1.000000 0.000000 0.000000
+0.000000 1.000000 0.000000
+0.000000 0.000000 1.000000
+
+projection
+762.240134 0.000000 313.434083 0.000000
+0.000000 759.066456 255.140152 0.000000
+0.000000 0.000000 1.000000 0.000000
