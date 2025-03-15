@@ -19,6 +19,13 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
 	: ModeBase(node, kModeName)
 	, _node(node)
 {
+	std::string target_pose_color_topic = _camera_namespace_color.empty()
+	? "/target_pose"
+	: _camera_namespace_color + "/target_pose";
+
+	std::string target_pose_bnw_topic = _camera_namespace_bnw.empty()
+	? "/target_pose"
+	: _camera_namespace_bnw + "/target_pose";
 
 	_trajectory_setpoint = std::make_shared<px4_ros2::TrajectorySetpointType>(*this);
 
@@ -26,14 +33,20 @@ PrecisionLand::PrecisionLand(rclcpp::Node& node)
 
 	_vehicle_attitude = std::make_shared<px4_ros2::OdometryAttitude>(*this);
 
+	_is_active_cam_color_sub = _node.create_subscription<std_msgs::msg::Bool>(
+        "/is_active_cam_color", 10, std::bind(&PrecisionLand::is_active_cam_color_callback, this, std::placeholders::_1));
+
 	_aruco_id_sub = _node.create_subscription<std_msgs::msg::Int32>(
         "/aruco_id", 10, std::bind(&PrecisionLand::aruco_id_callback, this, std::placeholders::_1));
 
 	_isloaded_sub = _node.create_subscription<std_msgs::msg::Bool>("/isloaded", 
 			10, std::bind(&PrecisionLand::isLoadedCallback, this, std::placeholders::_1));
 
-	_target_pose_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>("/target_pose",
-			   rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetPoseCallback, this, std::placeholders::_1));
+	_target_pose_color_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>(target_pose_color_topic,
+		rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetPoseColorCallback, this, std::placeholders::_1));
+
+	_target_pose_bnw_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>(target_pose_bnw_topic,
+			   rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetPoseBnwCallback, this, std::placeholders::_1));
 
 	_vehicle_land_detected_sub = _node.create_subscription<px4_msgs::msg::VehicleLandDetected>("/fmu/out/vehicle_land_detected",
 			   rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::vehicleLandDetectedCallback, this, std::placeholders::_1));
@@ -90,11 +103,25 @@ void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLand
 	_land_detected = msg->landed;
 }
 
-void PrecisionLand::targetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+void PrecisionLand::targetPoseColorCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
+	target_pose_color_msg = msg;
+}
+
+void PrecisionLand::targetPoseBnwCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+{
+	target_pose_bnw_msg = msg;
+}
+
+void PrecisionLand::is_active_cam_color_callback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+	msg_to_proc = msg 
+            ? target_pose_color_msg 
+            : target_pose_bnw_msg;
+
 	auto tag = ArucoTag {
-		.position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
-		.orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
+		.position = Eigen::Vector3d(msg_to_proc->pose.position.x, msg_to_proc->pose.position.y, msg_to_proc->pose.position.z),
+		.orientation = Eigen::Quaterniond(msg_to_proc->pose.orientation.w, msg_to_proc->pose.orientation.x, msg_to_proc->pose.orientation.y, msg_to_proc->pose.orientation.z),
 		.timestamp = _node.now(),
 	};
 

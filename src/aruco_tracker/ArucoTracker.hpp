@@ -10,6 +10,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <std_msgs/msg/int32.hpp>  // Standard message for aruco_id
 #include <std_msgs/msg/float64.hpp>  // Standard message for marker_size
+#include <std_msgs/msg/bool.hpp>  // Standard message for marker_size
 
 
 class ArucoTrackerNode : public rclcpp::Node
@@ -25,6 +26,7 @@ private:
 	void annotate_image(cv_bridge::CvImagePtr image, const cv::Vec3d& target);
 	void aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg);
 	void marker_size_callback(const std_msgs::msg::Float64::SharedPtr msg);
+	void is_active_cam_color_callback(const std_msgs::msg::Bool::SharedPtr msg);
 
 
 	rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr _image_sub;
@@ -33,6 +35,7 @@ private:
 	rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_pub;
 	rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr _aruco_id_sub;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr _marker_size_sub;
+	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _is_active_cam_color_sub;
 
 	std::unique_ptr<cv::aruco::ArucoDetector> _detector;
 	cv::Mat _camera_matrix;

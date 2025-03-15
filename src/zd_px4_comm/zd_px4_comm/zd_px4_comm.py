@@ -27,6 +27,7 @@ class ZDCommNode(Node):
         self.servo_command_publisher = self.create_publisher(Int32, '/target_position_command', 10)  # Servo command publisher
         self.aruco_id_publisher = self.create_publisher(Int32, '/aruco_id', 10)
         self.marker_size_publisher = self.create_publisher(Float64, '/marker_size', 10)
+        self.is_active_cam_color_publisher = self.create_publisher(Bool, '/is_active_cam_color', 10)
 
         # Subscribe to current position
         self.create_subscription(
@@ -107,6 +108,7 @@ class ZDCommNode(Node):
         self.gripper_gripped = False 
         self.loop_once = False 
         self.drone_return = False 
+        self.is_active_cam_color = True
         
         self.mode_callback_time = None
         self.hover_start_time = None  # Time when hovering starts      
@@ -246,6 +248,9 @@ class ZDCommNode(Node):
         msg = "Drone Home 0" if aruco_id == 0 else "Robot Home 1" if aruco_id == 1 else "Home Landmark 2" if aruco_id == 2 else "Robot 3"
         self.get_logger().info(f"Published ArUco ID: {msg}.")
 
+    def publish_active_cam_color(self, is_active_cam_color):
+        self.is_active_cam_color_publisher.publish(is_active_cam_color)
+
     def publish_takeoff(self):
         """Send takeoff command to PX4."""
         # Takeoff command (mode 3 corresponds to takeoff mode)
@@ -325,11 +330,12 @@ class ZDCommNode(Node):
             if time.time() - self.hover_start_time > 5.0:  # Hover for 5 seconds
                 self.hover_start_time = None
                 if self.drone_return:
-                    self.publish_aruco_info(0)
                     self.state = "PRE_HOME_DESCEND"
+                    self.publish_aruco_info(0)
                 elif self.service_mode == "D":
                     self.state = "CUSTOM_PRECISION_DESCEND"
-                    self.publish_aruco_info(1)
+                    self.publish_active_cam_color(False)
+                    self.publish_aruco_info(3)
                 elif self.service_mode == "R":
                     self.state = "WAYPOINT_SOLAR_PANEL"
                     self.publish_aruco_info(3)
@@ -408,6 +414,7 @@ class ZDCommNode(Node):
                 self.servo_command_publisher.publish(servo_msg)
             elif time.time() - self.hover_start_time >= 2.0:
                 self.state = "ASCEND"
+                self.publish_active_cam_color(True)
                 self.loop_once = False
                 self.hover_start_time = None
                 self.get_logger().info("Ascending.")
@@ -458,6 +465,7 @@ class ZDCommNode(Node):
                     # Begin aligning with solar panel (yawing)
                     # self.get_logger().info("Yawing until ultrasonic sensor readings tally...")
                 else:
+                    self.publish_active_cam_color(False)
                     self.state = "CUSTOM_PRECISION_DESCEND" #id3
                 self.loop_once = False
             

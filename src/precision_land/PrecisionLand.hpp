@@ -23,6 +23,7 @@
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/int32.hpp> 
 #include <std_msgs/msg/float64.hpp>
+#include <std_msgs/msg/bool.hpp>
 
 class PrecisionLand : public px4_ros2::ModeBase
 {
@@ -31,8 +32,10 @@ public:
 
 	void aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg);
 	void isLoadedCallback(const std_msgs::msg::Bool::SharedPtr msg);
-	void targetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+	void targetPoseColorCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+	void targetPoseBnwCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 	void vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg);
+	void is_active_cam_color_callback(const std_msgs::msg::Bool::SharedPtr msg);
 
 	// See ModeBasep
 	void onActivate() override;
@@ -72,7 +75,9 @@ private:
 	rclcpp::Node& _node;
 	rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr _aruco_id_sub;
 	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _isloaded_sub;
-	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_sub;
+	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_color_sub;
+	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_bnw_sub;
+	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _is_active_cam_color_sub;
 	rclcpp::Subscription<px4_msgs::msg::VehicleLandDetected>::SharedPtr _vehicle_land_detected_sub;
 
 	rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr _precision_hovering_done_pub;
@@ -125,4 +130,9 @@ private:
 	float descent_vel_tune = 0.0;
 	float loaded_robot_z = 0.5;
 	float loaded_land_z = 0.7;
+	std::string _camera_namespace_color;
+	std::string _camera_namespace_bnw;
+	geometry_msgs::msg::PoseStamped::SharedPtr target_pose_color_msg;
+	geometry_msgs::msg::PoseStamped::SharedPtr target_pose_bnw_msg;
+	geometry_msgs::msg::PoseStamped::SharedPtr msg_to_proc;
 };

@@ -24,8 +24,6 @@ ArucoTrackerNode::ArucoTrackerNode()
 		? "/camera_info"
 		: _camera_namespace + "/camera_info";
 
-	
-
 	_image_sub = create_subscription<sensor_msgs::msg::Image>(
             image_topic, qos, 
             std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1)
