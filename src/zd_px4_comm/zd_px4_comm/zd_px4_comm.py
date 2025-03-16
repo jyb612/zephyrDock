@@ -142,6 +142,7 @@ class ZDCommNode(Node):
         self.drone_return = False 
         self.is_active_cam_color = True
         self.isloaded = False
+        self.gripper_retry = False
         self.robot_return_flag = False
         self.solar_panel_angle_in_rad = None
         self.ultrasonic_left_range32 = None
@@ -450,6 +451,7 @@ class ZDCommNode(Node):
 
         elif self.state == "SERVO_ACTION":
             # Publish servo command
+            servo_msg = Int32()
             if not self.loop_once:
                 self.anchor_position[0] = self.current_position[0]
                 self.anchor_position[1] = self.current_position[1]
@@ -457,11 +459,10 @@ class ZDCommNode(Node):
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
                 self.publish_offboard_control_mode()
                 self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.anchor_position[2], yaw=self.anchor_position[3])
-                servo_msg = Int32()
                 self.loop_once = True
                 self.hover_start_time = time.time()
                 if not self.gripper_gripped:
-                    servo_msg.data = GRIP_STRONG  # Example servo position
+                    servo_msg.data = GRIP_STRONG
                     self.gripper_gripped = True
                     self.get_logger().info("Grip - servo command published.")
                 else:
@@ -470,7 +471,14 @@ class ZDCommNode(Node):
                     self.drone_return = True 
                     self.get_logger().info("Release - servo command published.")
                 self.servo_command_publisher.publish(servo_msg)
-            elif time.time() - self.hover_start_time >= 2.0:
+            elif time.time() - self.hover_start_time >= 1.0 and self.gripper_retry:
+                self.gripper_retry = False
+                servo_msg.data = GRIP_STRONG
+                self.gripper_gripped = True
+                self.drone_return = False 
+                self.get_logger().info("Grip - servo command published.")
+                self.servo_command_publisher.publish(servo_msg)
+            elif time.time() - self.hover_start_time >= 3.0:
                 self.state = "ASCEND"
                 self.publish_active_cam_color(True)
                 self.loop_once = False
@@ -496,6 +504,7 @@ class ZDCommNode(Node):
                 if self.gripper_gripped:
                     if not self.isloaded:
                         self.state = "CUSTOM_PRECISION_DESCEND"
+                        self.gripper_retry = True
                         self.publish_aruco_info(3)
                         self.publish_active_cam_color(False)
                         self.get_logger().info("!!!\n!!!\nPayload gripping fail, retrying...")
