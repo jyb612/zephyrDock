@@ -26,16 +26,18 @@ private:
 	void annotate_image(cv_bridge::CvImagePtr image, const cv::Vec3d& target);
 	void aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg);
 	void marker_size_callback(const std_msgs::msg::Float64::SharedPtr msg);
-	void is_active_cam_color_callback(const std_msgs::msg::Bool::SharedPtr msg);
 
 
 	rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr _image_sub;
 	rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr _camera_info_sub;
-	rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr _image_pub;
-	rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_pub;
+
 	rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr _aruco_id_sub;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr _marker_size_sub;
-	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _is_active_cam_color_sub;
+
+	rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr _image_pub;
+	rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_pub;
+	
+	rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr _isloaded_pub;
 
 	std::unique_ptr<cv::aruco::ArucoDetector> _detector;
 	cv::Mat _camera_matrix;
@@ -45,6 +47,7 @@ private:
 	int _param_dictionary {};
 	double _param_marker_size {};
 	std::string _camera_namespace;
-	bool ascend_indicator = false;
+	// bool ascend_indicator = false;
+	std_msgs::msg::Bool _isloaded;
 };
 

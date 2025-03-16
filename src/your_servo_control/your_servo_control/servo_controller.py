@@ -14,10 +14,6 @@ class ServoController(Node):
         self.client = None
         self.connected = False
 
-        # Predefined grip positions
-        self.GRIP = 2048
-        self.GRIP_HARDER = 3072
-        self.RELEASE = 1024
         self.POSITION_REGISTER = 257  # Register to check position
 
         # Attempt to connect to the servo
@@ -26,7 +22,7 @@ class ServoController(Node):
         if self.connected:
             # Subscribe to grip command topic
             self.create_subscription(
-                String,  # Using String commands: "grip", "grip harder", "release"
+                Int32,
                 '/servo_command',  
                 self.command_callback,
                 10
@@ -64,20 +60,13 @@ class ServoController(Node):
             self.connected = False
 
     def command_callback(self, msg):
-        """Handles incoming commands ('grip', 'grip harder', 'release')."""
-        command = msg.data.lower().strip()
-        if command == "grip":
-            target_position = self.GRIP
-        elif command == "grip harder":
-            target_position = self.GRIP_HARDER
-        elif command == "release":
-            target_position = self.RELEASE
+        if msg > 2048:
+            self.get_logger().info(f"Received command - STRONG GRIP: moving to position {msg}")
+        elif msg == 2048:
+            self.get_logger().info(f"Received command - GRIP: moving to position {msg}")
         else:
-            self.get_logger().warn(f"Unknown command: {command}")
-            return
-
-        self.get_logger().info(f"Received command: {command}, moving to position: {target_position}")
-        self.send_command(self.POSITION_REGISTER, target_position)
+            self.get_logger().info(f"Received command - RELEASE: moving to position {msg}")
+        self.send_command(self.POSITION_REGISTER, msg)
 
     def send_command(self, register, position):
         """Sends a write command to move the servo to the target position."""

@@ -16,8 +16,8 @@ class DualUltrasonicNode(Node):
         self.bus = smbus2.SMBus(7)
 
         # Create ROS2 publishers for both sensors
-        self.publisher_left = self.create_publisher(Float32, '/gyus42v2/left_range', 10)
-        self.publisher_right = self.create_publisher(Float32, '/gyus42v2/right_range', 10)
+        self.publisher_left = self.create_publisher(Float32, '/gyus42v2/left_range32', 10)
+        self.publisher_right = self.create_publisher(Float32, '/gyus42v2/right_range34', 10)
 
         # Read sensors at 10Hz (100ms interval)
         self.timer = self.create_timer(0.1, self.read_sensors)

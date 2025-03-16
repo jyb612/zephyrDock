@@ -43,14 +43,15 @@ ArucoTrackerNode::ArucoTrackerNode()
 	
 	// New subscriptions for dynamic parameter updates
     _aruco_id_sub = this->create_subscription<std_msgs::msg::Int32>(
-        "/aruco_id", qos, std::bind(&ArucoTrackerNode::aruco_id_callback, this, std::placeholders::_1));
+        "/aruco_id", 10, std::bind(&ArucoTrackerNode::aruco_id_callback, this, std::placeholders::_1));
 
     _marker_size_sub = this->create_subscription<std_msgs::msg::Float64>(
-        "/marker_size", qos, std::bind(&ArucoTrackerNode::marker_size_callback, this, std::placeholders::_1));
+        "/marker_size", 10, std::bind(&ArucoTrackerNode::marker_size_callback, this, std::placeholders::_1));
 	
 	// Publishers
 	_image_pub = create_publisher<sensor_msgs::msg::Image>("/image_proc", qos);
 	_target_pose_pub = create_publisher<geometry_msgs::msg::PoseStamped>("/target_pose", qos);
+	_isloaded_pub = create_publisher<std_msgs::msg::Bool>("/isloaded", 10);
 }
 
 void ArucoTrackerNode::loadParameters()
@@ -123,6 +124,16 @@ void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr m
 				pose_msg.pose.orientation.y = quat.y;
 				pose_msg.pose.orientation.z = quat.z;
 				pose_msg.pose.orientation.w = quat.w;
+				
+				if (_camera_namespace.find("bnw"))
+				{
+					_isloaded.data = true;
+					_isloaded.data = abs(float(tvec[2])) < 3.0
+							? true
+							: false;
+
+					_isloaded_pub->publish(_isloaded);
+				}
 
 				// Two-phase land
 				// if (pose_msg.pose.position.z > 5/(8/3.15))
