@@ -56,6 +56,9 @@ class ZDCalNode(Node):
         self.current_yaw_index = 0  # To keep track of the current yaw angle in the list
         self.angular_velocity_threshold = 0.01  # Threshold for angular velocity (radians per second)
         self.running = True
+        self.linear_x = 2.0
+        self.linear_y = 2.0
+        self.linear_z = -2.0
 
         # Timer to control the state machine
         self.timer = self.create_timer(0.5, self.timer_callback)  # 2Hz
@@ -186,14 +189,13 @@ class ZDCalNode(Node):
                     self.motion_callback_time = time.time()
 
         elif self.state == "LINEAR_CALIBRATION_X":
-            x_cal = 5.0
             self.publish_offboard_control_mode()
-            self.publish_trajectory_setpoint(x=x_cal, z=self.takeoff_altitude)
+            self.publish_trajectory_setpoint(x=self.linear_x, z=self.takeoff_altitude)
             if (time.time() - self.motion_callback_time > 1):
                 self.motion_callback_time = time.time()
-                self.get_logger().info(f"Toward *{x_cal}* 0 {self.takeoff_altitude}")
+                self.get_logger().info(f"Toward *{self.linear_x}* 0 {self.takeoff_altitude}")
             if not self.hover:
-                if abs(self.current_position[0] - x_cal) <= 0.1:  # Allow small tolerance
+                if abs(self.current_position[0] - self.linear_x) <= 0.1:  # Allow small tolerance
                     self.hover_start_time = time.time()
                     self.hover = True
             else:
@@ -203,15 +205,13 @@ class ZDCalNode(Node):
                     self.motion_callback_time = time.time()
         
         elif self.state == "LINEAR_CALIBRATION_Y":
-            x_cal = 5.0
-            y_cal = 5.0
             self.publish_offboard_control_mode()
-            self.publish_trajectory_setpoint(x=x_cal, y=y_cal, z=self.takeoff_altitude)
+            self.publish_trajectory_setpoint(x=self.linear_x, y=self.linear_y, z=self.takeoff_altitude)
             if (time.time() - self.motion_callback_time > 1):
                 self.motion_callback_time = time.time()
-                self.get_logger().info(f"Toward {x_cal} *{y_cal}* {self.takeoff_altitude}")
+                self.get_logger().info(f"Toward {self.linear_x} *{self.linear_y}* {self.takeoff_altitude}")
             if not self.hover:
-                if abs(self.current_position[1] - y_cal) <= 0.1:  # Allow small tolerance
+                if abs(self.current_position[1] - self.linear_y) <= 0.1:  # Allow small tolerance
                     self.hover_start_time = time.time()
                     self.hover = True
             else:
@@ -221,16 +221,13 @@ class ZDCalNode(Node):
                     self.motion_callback_time = time.time()
         
         elif self.state == "LINEAR_CALIBRATION_Z":
-            x_cal = 5.0
-            y_cal = 5.0
-            offset = 2.0
             self.publish_offboard_control_mode()
             if (time.time() - self.motion_callback_time > 1):
                 self.motion_callback_time = time.time()
-                self.publish_trajectory_setpoint(x=x_cal, y=y_cal, z=self.takeoff_altitude+offset)
-            self.get_logger().info(f"Toward {x_cal} {y_cal} *{self.takeoff_altitude+offset}*")
+                self.publish_trajectory_setpoint(x=self.linear_x, y=self.linear_y, z=self.takeoff_altitude+self.linear_z)
+            self.get_logger().info(f"Toward {self.linear_x} {self.linear_y} *{self.takeoff_altitude+self.linear_z}*")
             if not self.hover:
-                if abs(self.current_position[1] - y_cal) <= 0.1:  # Allow small tolerance
+                if abs(self.current_position[1] - self.linear_y) <= 0.1:  # Allow small tolerance
                     self.hover_start_time = time.time()
                     self.hover = True
             else:
