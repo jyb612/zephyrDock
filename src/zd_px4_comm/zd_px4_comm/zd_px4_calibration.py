@@ -207,14 +207,15 @@ class ZDCalNode(Node):
             if time.time() - self.hover_start_time >= 5:
                 self.origin_position[0] = round(self.current_position[0], 1)
                 self.origin_position[1] = round(self.current_position[1], 1)
+                self.origin_position[2] = round(self.current_position[2], 1)
                 self.anchor_position[0] = self.origin_position[0]
-                # self.anchor_position[0] = 0.0
                 self.anchor_position[1] = self.origin_position[1]
-                # self.anchor_position[1] = 0.0
+                self.anchor_position[2] = self.origin_position[2]
+
                 if (True):
                 # if (self.pre_flight_check()):
-                    self.get_logger().info(f"origin=({self.current_position[0]}, {self.current_position[1]})")
-                    self.get_logger().info(f"origin=({self.anchor_position[0]}, {self.anchor_position[1]})")
+                    self.get_logger().info(f"origin=({self.current_position[0]}, {self.current_position[1]}, {self.current_position[2]})")
+                    self.get_logger().info(f"origin=({self.anchor_position[0]}, {self.anchor_position[1]}, {self.anchor_position[2]})")
                     input_check = input("Input 'c' to test").upper()
                     if input_check == 'C':
                         self.state = "ARMING"
@@ -235,15 +236,15 @@ class ZDCalNode(Node):
                 # if (self.current_mode != 4):
                 #     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 4.0, 3.0)
                 self.get_logger().info("Drone armed and takeoff")
-                self.get_logger().info(f"origin=({self.anchor_position[0], self.anchor_position[1]})")
                 time.sleep(8)
+                self.anchor_position[2] = self.current_position[2]
                 self.anchor_position[3] = self.current_euler[2]
                 self.state = "TAKEOFF"
                 # pass
 
         elif self.state == "TAKEOFF":
             self.publish_offboard_control_mode()
-            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.takeoff_altitude, yaw=self.anchor_position[3])  # Start with yaw 0
+            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.anchor_position[2] + self.takeoff_altitude, yaw=self.anchor_position[3])  # Start with yaw 0
             self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 6.0)
             self.get_logger().info("Switched to Offboard mode")
             self.get_logger().info(f"Toward altitude: {self.takeoff_altitude}")
@@ -253,7 +254,7 @@ class ZDCalNode(Node):
 
         elif self.state == "HOVER":
             self.publish_offboard_control_mode()
-            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.takeoff_altitude, yaw=self.anchor_position[3])
+            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.anchor_position[2] + self.takeoff_altitude, yaw=self.anchor_position[3])
             if time.time() - self.hover_start_time > 1.0:  # Hover for 3 seconds
                 self.state = "YAW_CALIBRATION"
                 self.current_yaw_index = 0
@@ -261,7 +262,7 @@ class ZDCalNode(Node):
         elif self.state == "YAW_CALIBRATION":
             if self.current_yaw_index < len(self.yaw_angles):
                 self.yaw_angle = self.yaw_angles[self.current_yaw_index]
-                self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.takeoff_altitude, yaw=math.radians(self.yaw_angle))
+                self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.anchor_position[2] +self.takeoff_altitude, yaw=math.radians(self.yaw_angle))
                 self.get_logger().info(f"Yawing to {self.yaw_angle} degrees.")
                 self.state = "WAIT_FOR_YAW"
                 self.get_logger().info("Waiting for Yaw.")
@@ -275,7 +276,7 @@ class ZDCalNode(Node):
         elif self.state == "WAIT_FOR_YAW":
             # Check if the angular velocity is near zero (yaw is done)
             self.publish_offboard_control_mode()
-            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.takeoff_altitude, yaw=math.radians(self.yaw_angle))
+            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.anchor_position[2] + self.takeoff_altitude, yaw=math.radians(self.yaw_angle))
             if not self.hover:
                 if all(abs(v) < self.angular_velocity_threshold for v in self.angular_velocity):
                     self.hover_start_time = time.time()
@@ -289,10 +290,10 @@ class ZDCalNode(Node):
 
         elif self.state == "LINEAR_CALIBRATION_X":
             self.publish_offboard_control_mode()
-            self.publish_trajectory_setpoint(x=self.anchor_position[0] + self.linear_x, y=self.anchor_position[1], z=self.takeoff_altitude, yaw=self.anchor_position[3])
+            self.publish_trajectory_setpoint(x=self.anchor_position[0] + self.linear_x, y=self.anchor_position[1], z=self.anchor_position[2] + self.takeoff_altitude, yaw=self.anchor_position[3])
             if (time.time() - self.motion_callback_time > 1):
                 self.motion_callback_time = time.time()
-                self.get_logger().info(f"Toward *{self.anchor_position[0]}+{self.linear_x}* {self.anchor_position[1]}] {self.takeoff_altitude}")
+                self.get_logger().info(f"Toward *{self.anchor_position[0]}+{self.linear_x}* {self.anchor_position[1]}] {self.anchor_position[2] + self.takeoff_altitude}")
             if not self.hover:
                 if abs(self.current_position[0] - (self.anchor_position[0]+self.linear_x)) <= 0.1:  # Allow small tolerance
                     self.hover_start_time = time.time()
@@ -305,10 +306,10 @@ class ZDCalNode(Node):
         
         elif self.state == "LINEAR_CALIBRATION_Y":
             self.publish_offboard_control_mode()
-            self.publish_trajectory_setpoint(x=self.anchor_position[0] + self.linear_x, y=self.anchor_position[1] + self.linear_y, z=self.takeoff_altitude, yaw=self.anchor_position[3])
+            self.publish_trajectory_setpoint(x=self.anchor_position[0] + self.linear_x, y=self.anchor_position[1] + self.linear_y, z=self.anchor_position[2] + self.takeoff_altitude, yaw=self.anchor_position[3])
             if (time.time() - self.motion_callback_time > 1):
                 self.motion_callback_time = time.time()
-                self.get_logger().info(f"Toward {self.anchor_position[0] + self.linear_x} *{self.anchor_position[1]}+{self.linear_y}* {self.takeoff_altitude}")
+                self.get_logger().info(f"Toward {self.anchor_position[0] + self.linear_x} *{self.anchor_position[1]}+{self.linear_y}* {self.anchor_position[2] + self.takeoff_altitude}")
             if not self.hover:
                 if abs(self.current_position[1] - (self.anchor_position[1] + self.linear_y)) <= 0.1:  # Allow small tolerance
                     self.hover_start_time = time.time()
@@ -323,10 +324,10 @@ class ZDCalNode(Node):
             self.publish_offboard_control_mode()
             if (time.time() - self.motion_callback_time > 1):
                 self.motion_callback_time = time.time()
-                self.publish_trajectory_setpoint(x=self.anchor_position[0] + self.linear_x, y=self.anchor_position[1] + self.linear_y, z=self.takeoff_altitude+self.linear_z, yaw=self.anchor_position[3])
-            self.get_logger().info(f"Toward {self.anchor_position[0] + self.linear_x} {self.anchor_position[1] + self.linear_y} *{self.takeoff_altitude}+{self.linear_z}*")
+                self.publish_trajectory_setpoint(x=self.anchor_position[0] + self.linear_x, y=self.anchor_position[1] + self.linear_y, z=self.anchor_position[2] + self.takeoff_altitude+self.linear_z, yaw=self.anchor_position[3])
+            self.get_logger().info(f"Toward {self.anchor_position[0] + self.linear_x} {self.anchor_position[1] + self.linear_y} *{self.anchor_position[2]} + {self.takeoff_altitude}+{self.linear_z}*")
             if not self.hover:
-                if abs(self.current_position[2] - (self.takeoff_altitude+self.linear_z)) <= 0.1:  # Allow small tolerance
+                if abs(self.current_position[2] - (self.anchor_position[2]+self.takeoff_altitude+self.linear_z)) <= 0.1:  # Allow small tolerance
                     self.hover_start_time = time.time()
                     self.hover = True
             else:
