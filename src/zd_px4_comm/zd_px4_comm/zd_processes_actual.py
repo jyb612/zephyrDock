@@ -13,14 +13,14 @@ commands = [
     # Run the Micro XRCE-DDS Agent
     "cd && MicroXRCEAgent serial --dev /dev/ttyTHS1 -b 921600",
 
-    # Run QGroundControl
-    "cd && ./QGroundControl-x86_64.AppImage",
+    # # Run QGroundControl
+    # "cd && ./QGroundControl-x86_64.AppImage",
 
     # Run tf mini lidar
-    "ros2 run sensor_interface lidar",
+    "ros2 run sensor_interface lidar && exit",
 
     # Run dual ultrasonic sensor
-    "ros2 run sensor_interface ultrasonic_dual",
+    "ros2 run sensor_interface ultrasonic_dual && exit",
 ]
 
 # Loop through each command in the list

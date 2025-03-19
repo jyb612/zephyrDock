@@ -65,6 +65,7 @@ class ZDCalNode(Node):
         self.yaw_angles = [45, 90, 135, 180, 225, 270, 315, 0]  # List of yaw angles for calibration
         self.current_yaw_index = 0  # To keep track of the current yaw angle in the list
         self.angular_velocity_threshold = 0.01  # Threshold for angular velocity (radians per second)
+        self.loop_once = False
         self.running = True
         self.linear_x = 2.0
         self.linear_y = 2.0
@@ -120,9 +121,9 @@ class ZDCalNode(Node):
         self.current_mode = msg.nav_state
         if msg.arming_state == 2:
             self.armed = True
+            # self.get_logger().info(f"Current mode: {self.current_mode}")
         else:
             self.armed = False
-        # self.get_logger().info(f"Current mode: {self.current_mode}")
 
     def publish_offboard_control_mode(self):
         """Publish OffboardControlMode message."""
@@ -200,26 +201,33 @@ class ZDCalNode(Node):
     
     def timer_callback(self):
         if self.state == "PREFLIGHT":
-            self.origin_position[0] = round(self.current_position[0], 1)
-            self.origin_position[1] = round(self.current_position[1], 1)
-            self.anchor_position[0] = self.origin_position[0]
-            # self.anchor_position[0] = 0.0
-            self.anchor_position[1] = self.origin_position[1]
-            # self.anchor_position[1] = 0.0
-            self.get_logger().info(f"origin=({self.anchor_position[0]}, {self.anchor_position[1]})")
-            if (True):
-            # if (self.pre_flight_check()):
-                input_check = input("Input 'c' to test").upper()
-                if input_check == 'C':
-                    self.state = "ARMING"
-            else:
-                pass
+            if not self.loop_once:
+                self.hover_start_time = time.time()
+                self.loop_once = True
+            if time.time() - self.hover_start_time >= 5:
+                self.origin_position[0] = round(self.current_position[0], 1)
+                self.origin_position[1] = round(self.current_position[1], 1)
+                self.anchor_position[0] = self.origin_position[0]
+                # self.anchor_position[0] = 0.0
+                self.anchor_position[1] = self.origin_position[1]
+                # self.anchor_position[1] = 0.0
+                if (True):
+                # if (self.pre_flight_check()):
+                    self.get_logger().info(f"origin=({self.current_position[0]}, {self.current_position[1]})")
+                    self.get_logger().info(f"origin=({self.anchor_position[0]}, {self.anchor_position[1]})")
+                    input_check = input("Input 'c' to test").upper()
+                    if input_check == 'C':
+                        self.state = "ARMING"
+                        self.hover_start_time = None
+
+                else:
+                    pass
 
         """Main loop that implements the state machine."""
-        if self.state == "ARMING":
-            if (self.current_mode != 4):
-                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 4.0, 3.0)
+        if self.state == "ARMING":  
             if not self.armed:
+                if (self.current_mode != 4):
+                    self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 4.0, 3.0)
                 self.arm_drone()
                 self.publish_takeoff()
                 # hover_time = time.time()
@@ -231,6 +239,7 @@ class ZDCalNode(Node):
                 time.sleep(8)
                 self.anchor_position[3] = self.current_euler[2]
                 self.state = "TAKEOFF"
+                # pass
 
         elif self.state == "TAKEOFF":
             self.publish_offboard_control_mode()

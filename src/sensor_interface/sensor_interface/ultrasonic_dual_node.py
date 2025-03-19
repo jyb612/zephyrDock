@@ -5,8 +5,8 @@ import smbus2
 import time
 
 # I2C Addresses of the GY-US42v2 sensors after address change
-SENSOR_1_ADDRESS = 0x32  # First sensor address
-SENSOR_2_ADDRESS = 0x34  # Second sensor address
+SENSOR_1_ADDRESS = 0x34  # First sensor address
+SENSOR_2_ADDRESS = 0x32  # Second sensor address
 
 class DualUltrasonicNode(Node):
     def __init__(self):
