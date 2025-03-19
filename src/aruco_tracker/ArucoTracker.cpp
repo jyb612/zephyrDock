@@ -17,12 +17,20 @@ ArucoTrackerNode::ArucoTrackerNode()
 	auto qos = rclcpp::QoS(1).best_effort();
 	
 	std::string image_topic = _camera_namespace.empty() 
-            ? "/image_raw" 
-            : _camera_namespace + "/image_raw";
+            ? "/camera" 
+            : _camera_namespace + "/camera";
         
 	std::string camera_info_topic = _camera_namespace.empty()
 		? "/camera_info"
 		: _camera_namespace + "/camera_info";
+	
+	std::string target_pose_topic = _camera_namespace.empty()
+	? "/target_pose"
+	: _camera_namespace + "/target_pose";
+
+	std::string image_proc_topic = _camera_namespace.empty()
+	? "/image_proc"
+	: _camera_namespace + "/image_proc";
 
 	_image_sub = create_subscription<sensor_msgs::msg::Image>(
             image_topic, qos, 
@@ -49,8 +57,8 @@ ArucoTrackerNode::ArucoTrackerNode()
         "/marker_size", 10, std::bind(&ArucoTrackerNode::marker_size_callback, this, std::placeholders::_1));
 	
 	// Publishers
-	_image_pub = create_publisher<sensor_msgs::msg::Image>("/image_proc", qos);
-	_target_pose_pub = create_publisher<geometry_msgs::msg::PoseStamped>("/target_pose", qos);
+	_image_pub = create_publisher<sensor_msgs::msg::Image>(image_proc_topic, qos);
+	_target_pose_pub = create_publisher<geometry_msgs::msg::PoseStamped>(target_pose_topic, qos);
 	_isloaded_pub = create_publisher<std_msgs::msg::Bool>("/isloaded", 10);
 }
 
@@ -127,7 +135,7 @@ void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr m
 				
 				if (_camera_namespace.find("bnw"))
 				{
-					_isloaded.data = true;
+					// _isloaded.data = true;
 					_isloaded.data = abs(float(tvec[2])) < 3.0
 							? true
 							: false;

@@ -26,15 +26,15 @@ commands = [
     "ros2 run v4l2_camera v4l2_camera_node \
         --ros-args \
         -r __ns:=/color_camera \
-        -p video_device:="/dev/video0" \
-        -p camera_info_url:="file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_color.yaml",
+        -p video_device:=/dev/video0 \
+        -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_color.yaml",
 
     # Run camera BW
     "ros2 run v4l2_camera v4l2_camera_node \
         --ros-args \
         -r __ns:=/bnw_camera \
-        -p video_device:="/dev/video2" \
-        -p camera_info_url:="file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_bnw.yaml"",
+        -p video_device:=/dev/video2 \
+        -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_bnw.yaml",
 
     # Run actuator (serial bus servo gripper)
     "ros2 run your_servo_control servo_controller",

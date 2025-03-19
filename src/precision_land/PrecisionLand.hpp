@@ -126,6 +126,7 @@ private:
 	std_msgs::msg::Float64 _altitude_msg;
 	std_msgs::msg::Bool _done_msg;
 	bool _isloaded = false;
+	bool _is_active_cam_color = true;
 	int _aruco_id = 0;
 	float _target_z = 0.4;
 	float _current_altitude = 0.0;
@@ -136,5 +137,4 @@ private:
 	std::string _camera_namespace_bnw;
 	geometry_msgs::msg::PoseStamped::SharedPtr _target_pose_color_msg;
 	geometry_msgs::msg::PoseStamped::SharedPtr _target_pose_bnw_msg;
-	geometry_msgs::msg::PoseStamped::SharedPtr _msg_to_proc;
 };

@@ -34,22 +34,34 @@ def generate_launch_description():
             name='aruco_tracker',
             output='screen',
             parameters=[
-                PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
-                {'camera_namespace': '/color_camera'}  # Adding camera_namespace parameter
+                PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml'])
+                # {'camera_namespace': '/color_camera'}  # Adding camera_namespace parameter
             ]
-        ),    
+        ), 
 
-        # Launch Aruco Tracker node from aruco_tracker package
-        Node(
-            package='aruco_tracker',
-            executable='aruco_tracker',
-            name='aruco_tracker',
-            output='screen',
-            parameters=[
-                PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
-                {'camera_namespace': '/bnw_camera'}
-            ]
-        ),    
+        # # Launch Aruco Tracker node from aruco_tracker package
+        # Node(
+        #     package='aruco_tracker',
+        #     executable='aruco_tracker',
+        #     name='aruco_tracker',
+        #     output='screen',
+        #     parameters=[
+        #         PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
+        #         {'camera_namespace': '/color_camera'}  # Adding camera_namespace parameter
+        #     ]
+        # ),    
+
+        # # Launch Aruco Tracker node from aruco_tracker package
+        # Node(
+        #     package='aruco_tracker',
+        #     executable='aruco_tracker',
+        #     name='aruco_tracker',
+        #     output='screen',
+        #     parameters=[
+        #         PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
+        #         {'camera_namespace': '/bnw_camera'}
+        #     ]
+        # ),    
 
         # Add a delay (e.g., 5 seconds) before launching the precision_land node
         TimerAction(

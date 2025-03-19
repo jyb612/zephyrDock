@@ -86,7 +86,7 @@ void PrecisionLand::loadParameters()
 
 void PrecisionLand::lidar_range_callback(const std_msgs::msg::Float32::SharedPtr msg)
 {
-	_current_altitude = float(msg->data);
+	_current_altitude = -float(msg->data);
 }
 
 void PrecisionLand::aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg)
@@ -97,11 +97,10 @@ void PrecisionLand::aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg)
 void PrecisionLand::isLoadedCallback(const std_msgs::msg::Bool::SharedPtr msg)	// unused?
 {
     // Process the received boolean message
-    if (msg->data) {
+    if (msg->data)
         _isloaded = true;
-    } else {
+    else
         _isloaded = false;
-    }
 }
 
 void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg)
@@ -111,28 +110,39 @@ void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLand
 
 void PrecisionLand::targetPoseColorCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
-	_target_pose_color_msg = msg;
+	if (_is_active_cam_color){
+		auto tag = ArucoTag {
+			.position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
+			.orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
+			.timestamp = _node.now(),
+		};
+	
+		// Save tag position/orientation in NED world frame
+		_tag = getTagWorld(tag);
+		// RCLCPP_INFO(_node.get_logger(), "color");
+	}
 }
 
 void PrecisionLand::targetPoseBnwCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
-	_target_pose_bnw_msg = msg;
+	if (!(_is_active_cam_color)){
+		auto tag = ArucoTag {
+			.position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
+			.orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
+			.timestamp = _node.now(),
+		};
+		// Save tag position/orientation in NED world frame
+		_tag = getTagWorld(tag);
+		// RCLCPP_INFO(_node.get_logger(), "bnw");
+	}	
 }
 
 void PrecisionLand::is_active_cam_color_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
-	_msg_to_proc = msg 
-            ? _target_pose_color_msg 
-            : _target_pose_bnw_msg;
-
-	auto tag = ArucoTag {
-		.position = Eigen::Vector3d(_msg_to_proc->pose.position.x, _msg_to_proc->pose.position.y, _msg_to_proc->pose.position.z),
-		.orientation = Eigen::Quaterniond(_msg_to_proc->pose.orientation.w, _msg_to_proc->pose.orientation.x, _msg_to_proc->pose.orientation.y, _msg_to_proc->pose.orientation.z),
-		.timestamp = _node.now(),
-	};
-
-	// Save tag position/orientation in NED world frame
-	_tag = getTagWorld(tag);
+	if (msg->data)
+		_is_active_cam_color = true;
+	else
+		_is_active_cam_color = false;
 }
 
 PrecisionLand::ArucoTag PrecisionLand::getTagWorld(const ArucoTag& tag)
@@ -243,7 +253,8 @@ void PrecisionLand::updateSetpoint(float dt_s)
 			return;
 		}
 		Eigen::Vector2f vel = calculateVelocitySetpointXY();
-		_current_altitude = _current_altitude + _tag.position.z();
+		_current_altitude = -(_vehicle_local_position->positionNed().z() - _tag.position.z());	// SIM
+		// _current_altitude = _current_altitude + _tag.position.z();			// ACTUAL
 		if (_aruco_id == 3)	// loaded
 			_target_z = _loaded_robot_z;
 		else{
@@ -298,7 +309,8 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		}
 
 		Eigen::Vector2f vel = calculateVelocitySetpointXY();
-		_current_altitude = -(_vehicle_local_position->positionNed().z() - _tag.position.z());
+		_current_altitude = -(_vehicle_local_position->positionNed().z() - _tag.position.z());		// SIM
+		// _current_altitude = _current_altitude + _tag.position.z();		// ACTUAL
 		if (_aruco_id == 3)	// loaded
 			_target_z = _loaded_robot_z;
 		else{
