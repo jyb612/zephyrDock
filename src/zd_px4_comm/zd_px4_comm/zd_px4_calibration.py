@@ -54,7 +54,7 @@ class ZDCalNode(Node):
         self.angular_velocity = [0.0, 0.0, 0.0]
         self.current_mode = None  # Current flight mode
         self.armed = False  # Armed state
-        self.state = "ARMING"  # State machine state
+        self.state = "PREFLIGHT"  # State machine state
         self.takeoff_altitude = -5.0  # Takeoff altitude in NED (5 meters up)
         self.mode_callback_time = None
         self.hover_start_time = None  # Time when hovering starts
@@ -199,18 +199,27 @@ class ZDCalNode(Node):
 
     
     def timer_callback(self):
+        if self.state == "PREFLIGHT":
+            self.origin_position[0] = round(self.current_position[0], 1)
+            self.origin_position[1] = round(self.current_position[1], 1)
+            self.anchor_position[0] = self.origin_position[0]
+            # self.anchor_position[0] = 0.0
+            self.anchor_position[1] = self.origin_position[1]
+            # self.anchor_position[1] = 0.0
+            self.get_logger().info(f"origin=({self.anchor_position[0]}, {self.anchor_position[1]})")
+            if (True):
+            # if (self.pre_flight_check()):
+                input_check = input("Input 'c' to test").upper()
+                if input_check == 'C':
+                    self.state = "ARMING"
+            else:
+                pass
+
         """Main loop that implements the state machine."""
         if self.state == "ARMING":
             if (self.current_mode != 4):
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 4.0, 3.0)
             if not self.armed:
-                self.origin_position[0] = round(self.current_position[0], 1)
-                self.origin_position[1] = round(self.current_position[1], 1)
-                self.anchor_position[0] = self.origin_position[0]
-                # self.anchor_position[0] = 0.0
-                self.anchor_position[1] = self.origin_position[1]
-                # self.anchor_position[1] = 0.0
-
                 self.arm_drone()
                 self.publish_takeoff()
                 # hover_time = time.time()
