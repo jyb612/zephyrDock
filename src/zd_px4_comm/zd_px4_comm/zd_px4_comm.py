@@ -65,17 +65,24 @@ class ZDCommNode(Node):
             10
         )  
         
-        self.create_subscription(
+        self.create_subscription(               # external signal (undone)
             Bool, 
             '/robot_return_flag', 
             self.robot_return_flag_callback, 
             10
         )
         
-        self.create_subscription(
+        self.create_subscription(               # external signal (James)
             Float64, 
             '/solar_panel_angle_in_rad', 
             self.solar_panel_angle_in_rad_callback, 
+            10
+        )
+
+        self.create_subscription(               # external signal (James)
+            Float64, 
+            '/solar_panel_robot_waypoint', 
+            self.solar_panel_robot_waypoint_callback, 
             10
         )
 
@@ -107,13 +114,6 @@ class ZDCommNode(Node):
             10
         )
 
-        # self.create_subscription(
-        #     Float64, 
-        #     '/solar_panel_robot_waypoint', 
-        #     self.solar_panel_robot_waypoint_callback, 
-        #     10
-        # )
-
         # State variables
         self.service_mode = None
 
@@ -122,6 +122,11 @@ class ZDCommNode(Node):
         self.angular_velocity = [0.0, 0.0, 0.0]
         self.current_euler = [0.0, 0.0, 0.0] # roll, pitch, yaw (rad)
         self.origin_position = [0.0, 0.0, 0.0]
+        self.current_altitude = None  # To store the current altitude
+        self.solar_panel_angle_in_rad = None
+        self.ultrasonic_left_range32 = None
+        self.ultrasonic_right_range34 = None
+        self.aruco_id = 0
 
         self.search_altitude = -8.0  # Takeoff altitude in NED (8 meters up)
         self.pre_home_descend_altitude = -3.5
@@ -130,13 +135,12 @@ class ZDCommNode(Node):
         self.waypoint_solar_panel = [-6.0, 0.0, self.search_altitude]
         self.angular_velocity_threshold = 0.01  # Threshold for angular velocity (radians per second)
         self.time_threshold = 3.0
-    
+        
         self.waypoint = "HOME"
         self.current_mode = None  # Current flight mode
-        self.aruco_id = 0
         self.armed = False  # Armed state
         self.custom_mode_done = False
-        self.current_altitude = None  # To store the current altitude
+
         self.gripper_gripped = False 
         self.loop_once = False 
         self.drone_return = False 
@@ -144,10 +148,7 @@ class ZDCommNode(Node):
         self.isloaded = False
         self.gripper_retry = False
         self.robot_return_flag = False
-        self.solar_panel_angle_in_rad = None
-        self.ultrasonic_left_range32 = None
-        self.ultrasonic_right_range34 = None
-        
+                
         self.mode_callback_time = None
         self.hover_start_time = None  # Time when hovering starts      
 
@@ -158,13 +159,13 @@ class ZDCommNode(Node):
         self.timer = self.create_timer(0.5, self.timer_callback)  # 2Hz
 
     def lidar_range_callback(self, msg):
-        self.current_altitude = -msg.data
+        self.current_altitude = -float(msg.data)
 
     def ultrasonic_left_range32_callback(self, msg):
-        self.ultrasonic_left_range32 = msg.data
+        self.ultrasonic_left_range32 = float(msg.data)
    
     def ultrasonic_right_range34_callback(self, msg):
-        self.ultrasonic_right_range34 = msg.data
+        self.ultrasonic_right_range34 = float(msg.data)
 
     def isloaded_callback(self, msg):
         self.isloaded = True if msg.data else False
@@ -173,7 +174,7 @@ class ZDCommNode(Node):
         self.robot_return_flag = True if msg.data else False
     
     def solar_panel_angle_in_rad_callback(self, msg):
-        self.solar_panel_angle_in_rad = msg.data
+        self.solar_panel_angle_in_rad = float(msg.data)
         
     def odometry_callback(self, msg):
         """Callback to update the current position."""
@@ -194,6 +195,7 @@ class ZDCommNode(Node):
         
         # Convert quaternion to Euler angles (roll, pitch, yaw)
         self.current_euler = self.quaternion_to_euler(q)
+        # yaw = -180 ~ 180
 
     def quaternion_to_euler(self, q):
         """Convert quaternion to Euler angles (roll, pitch, yaw)"""
@@ -221,6 +223,39 @@ class ZDCommNode(Node):
         self.current_mode = msg.nav_state
         self.armed = True if msg.arming_state == 2 else False
         # self.get_logger().info(f"Current mode: {self.current_mode}")
+        # uint8 nav_state                                 # Currently active mode
+        # uint8 NAVIGATION_STATE_MANUAL = 0               # Manual mode
+        # uint8 NAVIGATION_STATE_ALTCTL = 1               # Altitude control mode
+        # uint8 NAVIGATION_STATE_POSCTL = 2               # Position control mode
+        # uint8 NAVIGATION_STATE_AUTO_MISSION = 3         # Auto mission mode
+        # uint8 NAVIGATION_STATE_AUTO_LOITER = 4          # Auto loiter mode
+        # uint8 NAVIGATION_STATE_AUTO_RTL = 5             # Auto return to launch mode
+        # uint8 NAVIGATION_STATE_POSITION_SLOW = 6
+        # uint8 NAVIGATION_STATE_FREE5 = 7
+        # uint8 NAVIGATION_STATE_FREE4 = 8
+        # uint8 NAVIGATION_STATE_FREE3 = 9
+        # uint8 NAVIGATION_STATE_ACRO = 10                # Acro mode
+        # uint8 NAVIGATION_STATE_FREE2 = 11
+        # uint8 NAVIGATION_STATE_DESCEND = 12             # Descend mode (no position control)
+        # uint8 NAVIGATION_STATE_TERMINATION = 13         # Termination mode
+        # uint8 NAVIGATION_STATE_OFFBOARD = 14
+        # uint8 NAVIGATION_STATE_STAB = 15                # Stabilized mode
+        # uint8 NAVIGATION_STATE_FREE1 = 16
+        # uint8 NAVIGATION_STATE_AUTO_TAKEOFF = 17        # Takeoff
+        # uint8 NAVIGATION_STATE_AUTO_LAND = 18           # Land
+        # uint8 NAVIGATION_STATE_AUTO_FOLLOW_TARGET = 19  # Auto Follow
+        # uint8 NAVIGATION_STATE_AUTO_PRECLAND = 20       # Precision land with landing target
+        # uint8 NAVIGATION_STATE_ORBIT = 21               # Orbit in a circle
+        # uint8 NAVIGATION_STATE_AUTO_VTOL_TAKEOFF = 22   # Takeoff, transition, establish loiter
+        # uint8 NAVIGATION_STATE_EXTERNAL1 = 23
+        # uint8 NAVIGATION_STATE_EXTERNAL2 = 24
+        # uint8 NAVIGATION_STATE_EXTERNAL3 = 25
+        # uint8 NAVIGATION_STATE_EXTERNAL4 = 26
+        # uint8 NAVIGATION_STATE_EXTERNAL5 = 27
+        # uint8 NAVIGATION_STATE_EXTERNAL6 = 28
+        # uint8 NAVIGATION_STATE_EXTERNAL7 = 29
+        # uint8 NAVIGATION_STATE_EXTERNAL8 = 30
+        # uint8 NAVIGATION_STATE_MAX = 31
 
     def precision_hovering_done_callback(self, msg):
         """Callback to handle custom precision land (hover) mode completion signal."""
@@ -245,41 +280,41 @@ class ZDCommNode(Node):
         offboard_msg.body_rate = False
         self.offboard_control_mode_publisher.publish(offboard_msg)
 
-    # def publish_trajectory_setpoint(self, x=0.0, y=0.0, z=-8.0, yaw=0.0):
-    #     """Publish a trajectory setpoint."""
-    #     trajectory_msg = TrajectorySetpoint()
-    #     trajectory_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-    #     trajectory_msg.position = [x, y, z]  # Set desired position
-    #     trajectory_msg.yaw = yaw  # Set desired yaw
-    #     self.trajectory_setpoint_publisher.publish(trajectory_msg)
-    
-    def publish_trajectory_setpoint(self, x=0.0, y=0.0, z=-6.0, yaw=0.0, velocity_limit=1.0):
-        """Publish a trajectory setpoint with velocity control."""
+    def publish_trajectory_setpoint(self, x=0.0, y=0.0, z=-8.0, yaw=0.0):
+        """Publish a trajectory setpoint."""
         trajectory_msg = TrajectorySetpoint()
         trajectory_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        
-        # Set position target (x, y, z) - optional
-        trajectory_msg.position = [x, y, z]
+        trajectory_msg.position = [x, y, z]  # Set desired position
         trajectory_msg.yaw = yaw  # Set desired yaw
-
-        # Calculate velocity towards the target
-        dx = x - self.current_position[0]
-        dy = y - self.current_position[1]
-        dz = z - self.current_position[2]
-        distance = math.sqrt(dx**2 + dy**2 + dz**2)
-
-        # Velocity calculation to target with a defined limit
-        if distance > 0:
-            velocity_x = (dx / distance) * velocity_limit
-            velocity_y = (dy / distance) * velocity_limit
-            velocity_z = (dz / distance) * velocity_limit
-        else:
-            velocity_x, velocity_y, velocity_z = 0.0, 0.0, 0.0
-
-        # Set the velocity in the trajectory message
-        # trajectory_msg.velocity = [velocity_x, velocity_y, velocity_z]
-
         self.trajectory_setpoint_publisher.publish(trajectory_msg)
+    
+    # def publish_trajectory_setpoint(self, x=0.0, y=0.0, z=-6.0, yaw=0.0, velocity_limit=1.0):
+    #     """Publish a trajectory setpoint with velocity control."""
+    #     trajectory_msg = TrajectorySetpoint()
+    #     trajectory_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+        
+    #     # Set position target (x, y, z) - optional
+    #     trajectory_msg.position = [x, y, z]
+    #     trajectory_msg.yaw = yaw  # Set desired yaw
+
+    #     # Calculate velocity towards the target
+    #     dx = x - self.current_position[0]
+    #     dy = y - self.current_position[1]
+    #     dz = z - self.current_position[2]
+    #     distance = math.sqrt(dx**2 + dy**2 + dz**2)
+
+    #     # Velocity calculation to target with a defined limit
+    #     if distance > 0:
+    #         velocity_x = (dx / distance) * velocity_limit
+    #         velocity_y = (dy / distance) * velocity_limit
+    #         velocity_z = (dz / distance) * velocity_limit
+    #     else:
+    #         velocity_x, velocity_y, velocity_z = 0.0, 0.0, 0.0
+
+    #     # Set the velocity in the trajectory message
+    #     # trajectory_msg.velocity = [velocity_x, velocity_y, velocity_z]
+
+    #     self.trajectory_setpoint_publisher.publish(trajectory_msg)
 
 
     def publish_vehicle_command(self, command, param1=0.0, param2=0.0, param3=0.0):
@@ -365,6 +400,36 @@ class ZDCommNode(Node):
         else:
             self.get_logger().info(f"ultrasonic range left32 not ready")
 
+    def calculate_destination(self, x0, y0, theta, phi, d):
+        """
+        Calculate the destination coordinates based on the drone's current position, yaw angle, relative angle, and distance.
+
+        Parameters:
+            x0 (float): Drone's current x-coordinate.
+            y0 (float): Drone's current y-coordinate.
+            theta (float): Drone's current yaw angle in degrees (0° = north, 90° = east).
+            phi (float): Relative angle to the destination in degrees (e.g., +90° for right-hand side).
+            d (float): Distance to the destination in meters.
+
+        Returns:
+            tuple: (x, y) coordinates of the destination.
+        """
+
+        # Convert angles from degrees to radians
+        theta_rad = math.radians(theta)
+        phi_rad = math.radians(phi)
+
+        # Calculate the destination angle relative to the x-axis
+        destination_angle = theta_rad + phi_rad
+        # Calculate the x and y displacements
+        delta_x = d * math.cos(destination_angle)
+        delta_y = d * math.sin(destination_angle)
+
+        # Calculate the destination coordinates
+        x = x0 + delta_x
+        y = y0 + delta_y
+
+        return x, y
 
     def timer_callback(self):
         if self.state != "SERVICE_SELECT" and time.time() - self.mode_callback_time >= 3:
@@ -373,15 +438,37 @@ class ZDCommNode(Node):
         
         """Main loop that implements the state machine."""
         if self.state == "SERVICE_SELECT":
-            self.mode_callback_time = time.time()
-            if (True):
-            # if (self.pre_flight_check()):
-                self.service_mode = input("Input 'd' to deploy, 'r' to return robot: ").upper()
-                if self.service_mode == 'D' or self.service_mode == 'R':
+            if not self.loop_once:
+                self.mode_callback_time = time.time()
+                self.hover_start_time = time.time()
+                self.loop_once = True
+            if time.time() - self.hover_start_time >= 3:
+                if (self.pre_flight_check()):
                     self.origin_position[0] = round(self.current_position[0], 1)
                     self.origin_position[1] = round(self.current_position[1], 1)
-                    self.get_logger().info(f"origin=({self.origin_position[0]}, {self.origin_position[1]})")
-                    self.state = "ARMING"
+                    self.origin_position[2] = round(self.current_position[2], 1)        # ACTUAL
+                    # self.origin_position[2] = round(self.current_position[2], 1)      # SIM
+                    self.anchor_position[0] = self.origin_position[0]
+                    self.anchor_position[1] = self.origin_position[1]
+                    self.anchor_position[2] = self.origin_position[2]
+
+                    # define waypoint to solar panel
+                    x, y =self.calculate_destination(x0=self.origin_position[0], y0=self.origin_position[1], theta=180.0, phi=0.0, d=5.0)
+                    self.waypoint_solar_panel[0] = x
+                    self.waypoint_solar_panel[1] = y
+                    self.waypoint_solar_panel[2] = self.origin_position[2] + self.search_altitude
+
+                    # define waypoint to home
+                    self.waypoint_home[0] = self.origin_position[0]
+                    self.waypoint_home[1] = self.origin_position[1]
+                    self.waypoint_home[2] = self.origin_position[2] + self.search_altitude
+
+                    self.get_logger().info(f"origin=({self.origin_position[0]}, {self.origin_position[1]}, {self.origin_position[2]})")
+                    self.service_mode = input("Input 'd' to deploy, 'r' to return robot: ").upper()
+                    if self.service_mode == 'D' or self.service_mode == 'R':
+                        self.state = "ARMING"
+                        self.hover_start_time = None
+                        self.loop_once = False
             else:
                 pass
 
@@ -412,9 +499,10 @@ class ZDCommNode(Node):
                 takeoff_altitude = self.search_altitude # waypoint to solar panel (return robot)
 
             self.publish_offboard_control_mode()
-            self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=takeoff_altitude, yaw=self.anchor_position[3])
+            z = self.origin_position[2] + takeoff_altitude
+            self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=z, yaw=self.anchor_position[3])
             
-            if abs(self.current_position[2] - takeoff_altitude) <= 0.1:  # Allow small tolerance
+            if abs(self.current_position[2] - z) <= 0.1:  # Allow small tolerance
                 isgood = True
             else:
                 isgood = False
@@ -452,15 +540,16 @@ class ZDCommNode(Node):
 
 
         elif self.state == "PRE_HOME_DESCEND":
-            descend_rate = 0.3
+            descend_rate = 0.2
             if not self.loop_once:
                 self.anchor_position[0] = self.origin_position[0]
                 self.anchor_position[1] = self.origin_position[1]
-                self.anchor_position[2] = self.search_altitude
+                self.anchor_position[2] = self.origin_position[2] + self.search_altitude
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
                 self.loop_once = True
                 self.get_logger().info("Initiate Phase 1 Descent.")
-            if self.current_position[2] - self.pre_home_descend_altitude >= -0.1:
+            z = self.origin_position[2] + self.pre_home_descend_altitude
+            if self.current_position[2] - z >= -0.1:
                 self.state = "CUSTOM_PRECISION_DESCEND"
                 self.loop_once = False
             self.publish_offboard_control_mode()
@@ -529,8 +618,9 @@ class ZDCommNode(Node):
                 takeoff_altitude = self.pre_home_descend_altitude
             else:
                 takeoff_altitude = self.search_altitude
-            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=takeoff_altitude, yaw=self.anchor_position[3])  # Ascend to takeoff altitude
-            if abs(self.current_position[2] - takeoff_altitude) <= 0.5:  # Allow small tolerance
+            z = self.origin_position[2] + takeoff_altitude
+            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=z, yaw=self.anchor_position[3])  # Ascend to takeoff altitude
+            if abs(self.current_position[2] - z) <= 0.5:  # Allow small tolerance
                 isgood = True
             else:
                 isgood = False
@@ -563,24 +653,26 @@ class ZDCommNode(Node):
 
         elif self.state == "WAYPOINT_SOLAR_PANEL":
             if not self.loop_once:
-                self.anchor_position[0] = self.waypoint_solar_panel[0] + self.current_position[0]
-                self.anchor_position[1] = self.waypoint_solar_panel[1] + self.current_position[1]
+                self.anchor_position[0] = self.waypoint_solar_panel[0]
+                self.anchor_position[1] = self.waypoint_solar_panel[1]
+                self.anchor_position[2] = self.waypoint_solar_panel[2]
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
                 self.loop_once = True
                 self.waypoint = "SOLAR PANEL"
                 self.get_logger().info("Initiate waypoint to Solar Panel")
             
-            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.waypoint_solar_panel[2], yaw=self.anchor_position[3])
+            self.publish_trajectory_setpoint(x=self.waypoint_solar_panel[0], y=self.waypoint_solar_panel[1], z=self.waypoint_solar_panel[2], yaw=self.anchor_position[3])
             self.publish_offboard_control_mode()
 
-            if abs(self.current_position[0] - self.anchor_position[0]) <= 0.1 and abs(self.current_position[1] - self.anchor_position[1]) <= 0.1:  # Allow small tolerance
+            if abs(self.current_position[0] - self.waypoint_solar_panel[0]) <= 0.1 and abs(self.current_position[1] - self.waypoint_solar_panel[1]) <= 0.1:  # Allow small tolerance
                 isgood = True
             else:
                 isgood = False
                 
             if self.stable_check(isgood):
                 if self.service_mode == 'D':
-                    self.state = "ALIGN_SOLAR_PANEL"
+                    self.state = "DEPLOY_DESCEND"
+                    # self.state = "ALIGN_SOLAR_PANEL"
                     # Begin aligning with solar panel (yawing)
                     # self.get_logger().info("Yawing until ultrasonic sensor readings tally...")
                 else:
@@ -589,50 +681,51 @@ class ZDCommNode(Node):
                 self.loop_once = False
             
 
-        elif self.state == "ALIGN_SOLAR_PANEL":
-            if not self.loop_once:
-                self.hover_start_time = time.time()
-                self.loop_once = True
-                self.get_logger().info("Payload aligning with slope, drone yawing")
-            # Assuming you already have the sensor readings as variables `left_sensor` and `right_sensor`
-            # These sensor values will be set through the sensor callback
+        # elif self.state == "ALIGN_SOLAR_PANEL":
+        #     if not self.loop_once:
+        #         self.hover_start_time = time.time()
+        #         self.loop_once = True
+        #         self.get_logger().info("Payload aligning with slope, drone yawing")
+        #     # Assuming you already have the sensor readings as variables `left_sensor` and `right_sensor`
+        #     # These sensor values will be set through the sensor callback
 
-            # If the ultrasonic readings match, proceed
-            # if abs(self.ultrasonic_left_range32 - self.ultrasonic_right_range34) <= 2:        # ACTUAL
-            if time.time() - self.hover_start_time >= 10:       # SIM
-                self.state = "DEPLOY_DESCEND"
-                self.hover_start_time = None
-                self.loop_once = False
-                self.anchor_position[3] = self.current_euler[2]
-                self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.waypoint_solar_panel[2], yaw = self.anchor_position[3])
-                self.get_logger().info("Descending for payload release")
-                # self.get_logger().info("Ultrasonic readings matched, proceeding to deploy.")
-            #     if self.hover_start_time is None:
-            #         # If it's the first time descend_rate is 0, store the time
-            #         self.hover_start_time = time.time()
-            #     else:
-            #         # If it's already been 3 seconds since descend_rate became 0
-            #         if time.time() - self.hover_start_time >= self.time_threshold:
-            #             self.state = "HOVER"
-            #             self.hover_start_time = None
-            # else:
-            #     self.hover_start_time = None  # Reset the timer if descend_rate is not 0
-            else:
-                # Continue yawing slowly if sensor readings don't match
-                yaw_rate = 0.05  # Set the slow yaw rate (you can adjust this value)
-                self.publish_offboard_control_mode()
-                self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.waypoint_solar_panel[2], yaw=self.current_euler[2] + yaw_rate)
-                # self.get_logger().info(f"Yawing: current yaw = {math.degrees(self.current_euler[2])}°, yaw rate = {math.degrees(yaw_rate)}°/signal")
-                # Optionally add a timeout to prevent infinite yawing if needed
-                if time.time() - self.hover_start_time > 60:  # If yawing exceeds 60 seconds, stop and check
-                    self.state = "WAYPOINT_SOLAR_PANEL"
-                    self.get_logger().warn("Yawing exceeded time limit, checking sensor again.")
-                    self.hover_start_time = None
-            self.publish_offboard_control_mode()
+        #     # If the ultrasonic readings match, proceed
+        #     # if abs(self.ultrasonic_left_range32 - self.ultrasonic_right_range34) <= 2:        # ACTUAL
+        #     if time.time() - self.hover_start_time >= 10:       # SIM
+        #         self.state = "DEPLOY_DESCEND"
+        #         self.hover_start_time = None
+        #         self.loop_once = False
+        #         self.anchor_position[3] = self.current_euler[2]
+        #         self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.waypoint_solar_panel[2], yaw = self.anchor_position[3])
+        #         self.get_logger().info("Descending for payload release")
+        #         # self.get_logger().info("Ultrasonic readings matched, proceeding to deploy.")
+        #     #     if self.hover_start_time is None:
+        #     #         # If it's the first time descend_rate is 0, store the time
+        #     #         self.hover_start_time = time.time()
+        #     #     else:
+        #     #         # If it's already been 3 seconds since descend_rate became 0
+        #     #         if time.time() - self.hover_start_time >= self.time_threshold:
+        #     #             self.state = "HOVER"
+        #     #             self.hover_start_time = None
+        #     # else:
+        #     #     self.hover_start_time = None  # Reset the timer if descend_rate is not 0
+        #     else:
+        #         # Continue yawing slowly if sensor readings don't match
+        #         yaw_rate = 0.05  # Set the slow yaw rate (you can adjust this value)
+        #         self.publish_offboard_control_mode()
+        #         self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.waypoint_solar_panel[2], yaw=self.current_euler[2] + yaw_rate)
+        #         # self.get_logger().info(f"Yawing: current yaw = {math.degrees(self.current_euler[2])}°, yaw rate = {math.degrees(yaw_rate)}°/signal")
+        #         # Optionally add a timeout to prevent infinite yawing if needed
+        #         if time.time() - self.hover_start_time > 60:  # If yawing exceeds 60 seconds, stop and check
+        #             self.state = "WAYPOINT_SOLAR_PANEL"
+        #             self.get_logger().warn("Yawing exceeded time limit, checking sensor again.")
+        #             self.hover_start_time = None
+        #     self.publish_offboard_control_mode()
 
 
-        elif self.state == "DEPLOY_DESCEND": 
-            altitude_difference = self.current_position[2] - self.deploy_altitude
+        elif self.state == "DEPLOY_DESCEND":
+            z = self.origin_position[2] + self.deploy_altitude
+            altitude_difference = self.current_position[2] - z
 
             if altitude_difference <= -4:  # If much higher than target (more negative)
                 descend_rate = 0.3  # Faster descent
@@ -663,9 +756,9 @@ class ZDCommNode(Node):
                 self.loop_once = True
                 self.get_logger().info("Waypoint to Home")
             self.publish_offboard_control_mode()
-            self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=self.search_altitude, yaw = self.anchor_position[3])
+            self.publish_trajectory_setpoint(x=self.waypoint_home[0], y=self.waypoint_home[1], z=self.waypoint_home[2], yaw = self.anchor_position[3])
             
-            if abs(self.current_position[0]-self.origin_position[0]) <= 0.1 and abs(self.current_position[1]-self.origin_position[1]) <= 0.1:
+            if abs(self.current_position[0]-self.waypoint_home[0]) <= 0.1 and abs(self.current_position[1]-self.waypoint_home[1]) <= 0.1:
                 isgood = True
             else:
                 isgood = False

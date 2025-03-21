@@ -19,21 +19,21 @@ def generate_launch_description():
     return LaunchDescription([
         # ExecuteProcess(cmd=['bash', bash_script_path], output='screen'),
         
-        Node(
-            package='zd_px4_comm',
-            namespace='zd_px4_comm',
-            executable='zd_processes_actual',
-            name='zd_processes_actual',
-            prefix='gnome-terminal --'
-        ),
-
         # Node(
         #     package='zd_px4_comm',
         #     namespace='zd_px4_comm',
-        #     executable='zd_processes',
-        #     name='zd_processes',
+        #     executable='zd_processes_actual',
+        #     name='zd_processes_actual',
         #     prefix='gnome-terminal --'
         # ),
+
+        Node(               # SIM
+            package='zd_px4_comm',
+            namespace='zd_px4_comm',
+            executable='zd_processes',
+            name='zd_processes',
+            prefix='gnome-terminal --'
+        ),
         
         # Launch Aruco Tracker node from aruco_tracker package
         Node(
