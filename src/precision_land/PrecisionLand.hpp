@@ -129,7 +129,8 @@ private:
 	bool _is_active_cam_color = true;
 	int _aruco_id = 0;
 	float _target_z = 0.4;
-	float _current_altitude = 0.0;
+	float _above_ground_altitude = 0.0;		// AMSL: Above Mean Sea Level (Origin)
+	float _above_origin_altitude = 0.0;		// AGL: Above Ground Level (Obstacle / Terrain)
 	float _descent_vel_tune = 0.0;
 	float _loaded_robot_z = 0.5;
 	float _loaded_land_z = 0.7;

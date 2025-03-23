@@ -122,7 +122,7 @@ class ZDCommNode(Node):
         self.angular_velocity = [0.0, 0.0, 0.0]
         self.current_euler = [0.0, 0.0, 0.0] # roll, pitch, yaw (rad)
         self.origin_position = [0.0, 0.0, 0.0]
-        self.current_altitude = None  # To store the current altitude
+        self.above_ground_altitude = None  # To store the current altitude
         self.solar_panel_angle_in_rad = None
         self.ultrasonic_left_range32 = None
         self.ultrasonic_right_range34 = None
@@ -159,7 +159,7 @@ class ZDCommNode(Node):
         self.timer = self.create_timer(0.5, self.timer_callback)  # 2Hz
 
     def lidar_range_callback(self, msg):
-        self.current_altitude = -float(msg.data)
+        self.above_ground_altitude = -float(msg.data)   # negative sign for FRD NED coordinate system
 
     def ultrasonic_left_range32_callback(self, msg):
         self.ultrasonic_left_range32 = float(msg.data)
@@ -386,7 +386,7 @@ class ZDCommNode(Node):
     def pre_flight_check(self):
         if self.ultrasonic_left_range32 != None:
             if self.ultrasonic_right_range34 != None:
-                if self.current_altitude != None:
+                if self.above_ground_altitude != None:
                     if self.solar_panel_angle_in_rad != None:
                         return True
                     else:

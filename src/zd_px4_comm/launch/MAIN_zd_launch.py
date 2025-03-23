@@ -43,7 +43,6 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml'])
-                # {'camera_namespace': '/color_camera'}  # Adding camera_namespace parameter
             ]
         ), 
 

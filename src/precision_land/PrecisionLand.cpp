@@ -86,7 +86,7 @@ void PrecisionLand::loadParameters()
 
 void PrecisionLand::lidar_range_callback(const std_msgs::msg::Float32::SharedPtr msg)
 {
-	_current_altitude = -float(msg->data);
+	_above_ground_altitude = -float(msg->data);
 }
 
 void PrecisionLand::aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg)
@@ -110,9 +110,10 @@ void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLand
 
 void PrecisionLand::targetPoseColorCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
 {
+	double x = 0.35, y = 2;
 	if (_is_active_cam_color){
 		auto tag = ArucoTag {
-			.position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
+			.position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y + 0.5*pow(sin(x), y), msg->pose.position.z),
 			.orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
 			.timestamp = _node.now(),
 		};
@@ -253,8 +254,8 @@ void PrecisionLand::updateSetpoint(float dt_s)
 			return;
 		}
 		Eigen::Vector2f vel = calculateVelocitySetpointXY();
-		_current_altitude = -(_vehicle_local_position->positionNed().z() - _tag.position.z());	// SIM
-		// _current_altitude = _current_altitude + _tag.position.z();			// ACTUAL
+		_above_ground_altitude = -(_vehicle_local_position->positionNed().z() - _tag.position.z());	// SIM
+		// _above_ground_altitude = _above_ground_altitude + _tag.position.z();			// ACTUAL
 		if (_aruco_id == 3)	// loaded
 			_target_z = _loaded_robot_z;
 		else{
@@ -273,28 +274,29 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		}
 		else{
 			_descent_vel_tune = 0.5;
-			// RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _vehicle_local_position->positionNed().z(), _tag.position.z(), _current_altitude);
+			// RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _vehicle_local_position->positionNed().z(), _tag.position.z(), _above_ground_altitude);
 			
-			if (_current_altitude <= _target_z + 0.05f && _current_altitude >= _target_z - 0.05f) {
+			// if (_above_ground_altitude <= _target_z + 0.05f && _above_ground_altitude >= _target_z - 0.05f)
+			if(abs(_above_ground_altitude - _target_z) <= 0.05f){
 				_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), 0), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
-				RCLCPP_INFO(_node.get_logger(), "Reached target altitude at %.2f meters. Hovering now.", _current_altitude);
+				RCLCPP_INFO(_node.get_logger(), "Reached target altitude at %.2f meters. Hovering now.", _above_ground_altitude);
 		
 				// Transition to Hover state after descent
 				switchToState(State::Hover);
 			}
 			// If LiDAR altitude is above the target, continue descending
-			else if (_current_altitude > _target_z + 1.00f) {
+			else if (_above_ground_altitude > _target_z + 1.00f) {
 				_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 			}
-			else if (_current_altitude > _target_z + 0.05f) {
+			else if (_above_ground_altitude > _target_z + 0.05f) {
 				_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel*_descent_vel_tune), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 			}
 			// If LiDAR altitude is below the target, ascend
-			else if (_current_altitude < _target_z - 0.05f) {
+			else if (_above_ground_altitude < _target_z - 0.05f) {
 				_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_ascent_vel*_descent_vel_tune), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 			}
 			
-			_altitude_msg.data = _current_altitude;
+			_altitude_msg.data = _above_ground_altitude;
 			// RCLCPP_INFO(_node.get_logger(), "altitude published.");
 		}
 		break;
@@ -309,8 +311,8 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		}
 
 		Eigen::Vector2f vel = calculateVelocitySetpointXY();
-		_current_altitude = -(_vehicle_local_position->positionNed().z() - _tag.position.z());		// SIM
-		// _current_altitude = _current_altitude + _tag.position.z();		// ACTUAL
+		_above_ground_altitude = -(_vehicle_local_position->positionNed().z() - _tag.position.z());		// SIM
+		// _above_ground_altitude = _above_ground_altitude + _tag.position.z();		// ACTUAL
 		if (_aruco_id == 3)	// loaded
 			_target_z = _loaded_robot_z;
 		else{
@@ -319,24 +321,24 @@ void PrecisionLand::updateSetpoint(float dt_s)
 		}
 		_descent_vel_tune = 0.5;
 
-		// RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _vehicle_local_position->positionNed().z(), _tag.position.z(), _current_altitude);
+		// RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _vehicle_local_position->positionNed().z(), _tag.position.z(), _above_ground_altitude);
 		// Get LiDAR reading for hover control
-		RCLCPP_INFO(_node.get_logger(), "Hovering at LiDAR altitude: %.2f meters", _current_altitude);
+		RCLCPP_INFO(_node.get_logger(), "Hovering at LiDAR altitude: %.2f meters", _above_ground_altitude);
 	
 		// If LiDAR reading is within tolerance of 5 cm, maintain hover
-		if (_current_altitude > _target_z + 1.00f) {
+		if (_above_ground_altitude > _target_z + 1.00f) {
 			// If too high, descend slightly
 			_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 		}
-		else if (_current_altitude > _target_z + 0.05f) {
+		else if (_above_ground_altitude > _target_z + 0.05f) {
 			// If too low, ascend slightly
 			_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel*_descent_vel_tune), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 		}
-		else if (_current_altitude < _target_z - 0.2f) {
+		else if (_above_ground_altitude < _target_z - 0.2f) {
 			// If too low, ascend slightly
 			_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_ascent_vel), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 		}
-		else if (_current_altitude < _target_z - 0.05f) {
+		else if (_above_ground_altitude < _target_z - 0.05f) {
 			// If too low, ascend slightly
 			_trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_ascent_vel*_descent_vel_tune), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 		}
