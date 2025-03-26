@@ -7,6 +7,11 @@ import time
 
 # List of commands to run
 commands = [
+
+    # Run the PX4 SITL simulation
+    "cd ~/zephyrDock/PX4-Autopilot && make px4_sitl gz_x500_mono_cam_down",
+    # "cd ~/zephyrDock/PX4-Autopilot && make px4_sitl gz_x500_depth",
+
     # Run rqt_image
     "ros2 run rqt_image_view rqt_image_view && exit",
 
@@ -22,8 +27,6 @@ commands = [
     #Run camera info bridge
     "ros2 run ros_gz_bridge parameter_bridge /camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo && exit",
 
-    # Run the PX4 SITL simulation
-    "cd ~/zephyrDock/PX4-Autopilot && make px4_sitl gz_x500_mono_cam_down",
 ]
 
 # Loop through each command in the list

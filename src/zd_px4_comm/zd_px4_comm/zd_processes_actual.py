@@ -19,8 +19,8 @@ commands = [
     # Run tf mini lidar
     "ros2 run sensor_interface lidar && exit",
 
-    # Run dual ultrasonic sensor
-    "ros2 run sensor_interface ultrasonic_dual && exit",
+    # # Run dual ultrasonic sensor
+    # "ros2 run sensor_interface ultrasonic_dual && exit",
 ]
 
 # Loop through each command in the list

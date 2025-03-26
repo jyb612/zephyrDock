@@ -1,10 +1,26 @@
 precision_land:
   ros__parameters:
-    ascent_vel: -0.2
+    ascent_vel: -0.40
     descent_vel: 0.2
+    hold_vel: -0.01
     vel_p_gain: 1.7
     vel_i_gain: 0.0
     max_velocity: 3.0
     target_timeout: 5.0
     delta_position: 0.2
     delta_velocity: 0.2
+    loaded_robot_z: 0.3
+    loaded_land_z: 0.3
+    inclined_angle: 20.0
+    vel_tune: 0.5
+    cam_gripper_offset_front: 0.13
+    cam_gripper_offset_right: 0.0
+    cam_gripper_offset_down: 0.0
+    lidar_cam_offset_front: 0.0
+    lidar_cam_offset_right: 0.0
+    lidar_cam_offset_down: 0.0
+    cam_marker_offset_front: -0.02 # aruco up (+)
+    cam_marker_offset_right: 0.0
+    origin_height: 0.0
+
+
