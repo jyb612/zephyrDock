@@ -272,7 +272,7 @@ class ZDCommNode(Node):
 
     def get_marker_size(self, aruco_id):
         """Return the marker size based on the ArUco ID."""
-        return 0.5 if aruco_id == 2 else 0.18
+        return 0.5 if aruco_id == 2 else 0.17
         
     def publish_offboard_control_mode(self):
         """Publish OffboardControlMode message."""
