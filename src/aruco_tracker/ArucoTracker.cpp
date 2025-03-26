@@ -80,6 +80,10 @@ void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr m
 		// Convert ROS image message to OpenCV image
 		cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
 
+		// Rotate image 180 degrees if _camera_namespace is "/bnw_camera"
+		if (_camera_namespace == "/bnw_camera")
+			cv::rotate(cv_ptr->image, cv_ptr->image, cv::ROTATE_180);
+
 		// Detect markers
 		std::vector<int> ids;
 		std::vector<std::vector<cv::Point2f>> corners;
