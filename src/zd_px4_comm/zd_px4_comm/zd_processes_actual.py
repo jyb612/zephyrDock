@@ -11,7 +11,7 @@ commands = [
     "ros2 run rqt_image_view rqt_image_view && exit",
 
     # Run the Micro XRCE-DDS Agent
-    "cd && MicroXRCEAgent serial --dev /dev/ttyTHS1 -b 921600",
+    "cd && MicroXRCEAgent serial --dev /dev/ttyTHS1 -b 921600 && exit",
 
     # # Run QGroundControl
     # "cd && ./QGroundControl-x86_64.AppImage",
@@ -27,14 +27,14 @@ commands = [
       --ros-args \
       -r __ns:=/color_camera \
       -p video_device:=/dev/video0 \
-      -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_color.yaml"
+      -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_color.yaml && exit",
 
     #Run camera bnw plug second
     "ros2 run v4l2_camera v4l2_camera_node \
       --ros-args \
       -r __ns:=/bnw_camera \
       -p video_device:=/dev/video2 \
-      -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_bnw.yaml"
+      -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_bnw.yaml && exit",
 
 ]
 

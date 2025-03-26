@@ -17,8 +17,8 @@ ArucoTrackerNode::ArucoTrackerNode()
 	auto qos = rclcpp::QoS(1).best_effort();
 	
 	std::string image_topic = _camera_namespace.empty() 
-            ? "/camera" 
-            : _camera_namespace + "/camera";
+            ? "/image_raw" 
+            : _camera_namespace + "/image_raw";
         
 	std::string camera_info_topic = _camera_namespace.empty()
 		? "/camera_info"
