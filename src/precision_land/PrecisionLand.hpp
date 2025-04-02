@@ -128,14 +128,26 @@
 	 float _param_loaded_land_z = {};
 	 float _param_inclined_angle = {};
 
-	 float _param_cam_gripper_offset_front = {};
-	 float _param_cam_gripper_offset_right = {};
-	 float _param_cam_gripper_offset_down = {};
-	 float _param_lidar_cam_offset_front = {};
-	 float _param_lidar_cam_offset_right = {};
-	 float _param_lidar_cam_offset_down = {};
-	 float _param_cam_marker_offset_front = {};
-	 float _param_cam_marker_offset_right = {};
+	 // Offsets for the color camera
+	 float _param_color_cam_gripper_offset_front = {};
+	 float _param_color_cam_gripper_offset_right = {};
+	 float _param_color_cam_gripper_offset_down = {};
+	 float _param_lidar_color_cam_offset_front = {};
+	 float _param_lidar_color_cam_offset_right = {};
+	 float _param_lidar_color_cam_offset_down = {};
+	 float _param_color_cam_marker_offset_front = {};
+	 float _param_color_cam_marker_offset_right = {};
+
+	 // Offsets for the black-and-white (bnw) camera
+	 float _param_bnw_cam_gripper_offset_front = {};
+	 float _param_bnw_cam_gripper_offset_right = {};
+	 float _param_bnw_cam_gripper_offset_down = {};
+	 float _param_lidar_bnw_cam_offset_front = {};
+	 float _param_lidar_bnw_cam_offset_right = {};
+	 float _param_lidar_bnw_cam_offset_down = {};
+	 float _param_bnw_cam_marker_offset_front = {};
+	 float _param_bnw_cam_marker_offset_right = {};
+
 	 float _param_origin_height = {};
 	 
 

@@ -1,5 +1,7 @@
 precision_land:
   ros__parameters:
+    camera_namespace_color: "/color_camera"
+    camera_namespace_bnw: "/bnw_camera"
     ascent_vel: -0.40
     descent_vel: 0.2
     hold_vel: -0.01
@@ -9,18 +11,30 @@ precision_land:
     target_timeout: 5.0
     delta_position: 0.2
     delta_velocity: 0.2
-    loaded_robot_z: 0.3
-    loaded_land_z: 0.3
-    inclined_angle: 20.0
+    loaded_robot_z: 0.4
+    loaded_land_z: 0.6
+    inclined_angle: 0.0   # 20 deg 0.349
     vel_tune: 0.5
-    cam_gripper_offset_front: 0.13
-    cam_gripper_offset_right: 0.0
-    cam_gripper_offset_down: 0.0
-    lidar_cam_offset_front: 0.0
-    lidar_cam_offset_right: 0.0
-    lidar_cam_offset_down: 0.0
-    cam_marker_offset_front: -0.02 # aruco up (+)
-    cam_marker_offset_right: 0.0
+
+    # Offsets for color camera
+    color_cam_gripper_offset_front: 0.175   # cam front gripper
+    color_cam_gripper_offset_right: -0.15   # cam left gripper
+    color_cam_gripper_offset_down: -0.15    # cam above gripper
+    lidar_color_cam_offset_front: 0.325     # lidar ahead cam
+    lidar_color_cam_offset_right: 0.025     # lidar on cam right
+    lidar_color_cam_offset_down: 0.0      # lidar above cam
+    color_cam_marker_offset_front: 0.175    # cam ahead marker (aruco +Y)
+    color_cam_marker_offset_right: 0.175
+
+    # Offsets for bnw camera (Adjust as needed)
+    bnw_cam_gripper_offset_front: 0.15
+    bnw_cam_gripper_offset_right: 0.0
+    bnw_cam_gripper_offset_down: 0.1
+    lidar_bnw_cam_offset_front: 0.01
+    lidar_bnw_cam_offset_right: 0.15
+    lidar_bnw_cam_offset_down: 0.05
+    bnw_cam_marker_offset_front: 0.0
+    bnw_cam_marker_offset_right: 0.0
     origin_height: 0.0
 
 

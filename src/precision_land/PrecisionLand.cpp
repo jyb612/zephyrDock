@@ -65,6 +65,8 @@
  
  void PrecisionLand::loadParameters()
  {
+	 _node.declare_parameter<std::string>("camera_namespace_color", std::string("/color_camera"));
+	 _node.declare_parameter<std::string>("camera_namespace_bnw", std::string("/bnw_camera"));
 	 _node.declare_parameter<float>("ascent_vel", -1.0);
 	 _node.declare_parameter<float>("descent_vel", 1.0);
 	 _node.declare_parameter<float>("hold_vel", 1.0);
@@ -74,21 +76,34 @@
 	 _node.declare_parameter<float>("target_timeout", 3.0);
 	 _node.declare_parameter<float>("delta_position", 0.25);
 	 _node.declare_parameter<float>("delta_velocity", 0.25);
-	 
-	 _node.declare_parameter<float>("loaded_robot_z", 0.5);
-	 _node.declare_parameter<float>("loaded_land_z", 0.7);
-	 _node.declare_parameter<float>("inclined_angle", 20);
+	 _node.declare_parameter<float>("loaded_robot_z", 0.3);
+	 _node.declare_parameter<float>("loaded_land_z", 0.3);
+	 _node.declare_parameter<float>("inclined_angle", 0.0);
 	 _node.declare_parameter<float>("vel_tune", 0.5);
-	 _node.declare_parameter<float>("cam_gripper_offset_front", 0.0);
-	 _node.declare_parameter<float>("cam_gripper_offset_right", 3.0);
-	 _node.declare_parameter<float>("cam_gripper_offset_down", 3.0);
-	 _node.declare_parameter<float>("lidar_cam_offset_front", 0.25);
-	 _node.declare_parameter<float>("lidar_cam_offset_right", 0.25);
-	 _node.declare_parameter<float>("lidar_cam_offset_down", 0.5);
-	 _node.declare_parameter<float>("cam_marker_offset_front", 0.7);
-	 _node.declare_parameter<float>("cam_marker_offset_right", 20);
-	 _node.declare_parameter<float>("origin_height", 0.5);
- 
+	 
+	 // Declare parameters for color camera
+	 _node.declare_parameter<float>("color_cam_gripper_offset_front", -0.14);
+	 _node.declare_parameter<float>("color_cam_gripper_offset_right", 0.0);
+	 _node.declare_parameter<float>("color_cam_gripper_offset_down", -0.15);
+	 _node.declare_parameter<float>("lidar_color_cam_offset_front", 0.315);
+	 _node.declare_parameter<float>("lidar_color_cam_offset_right", 0.175);
+	 _node.declare_parameter<float>("lidar_color_cam_offset_down", -0.06);
+	 _node.declare_parameter<float>("color_cam_marker_offset_front", 0.005);
+	 _node.declare_parameter<float>("color_cam_marker_offset_right", 0.0);
+
+	 // Declare parameters for bnw camera
+	 _node.declare_parameter<float>("bnw_cam_gripper_offset_front", 0.0);
+	 _node.declare_parameter<float>("bnw_cam_gripper_offset_right", 0.0);
+	 _node.declare_parameter<float>("bnw_cam_gripper_offset_down", 0.0);
+	 _node.declare_parameter<float>("lidar_bnw_cam_offset_front", 0.0);
+	 _node.declare_parameter<float>("lidar_bnw_cam_offset_right", 0.0);
+	 _node.declare_parameter<float>("lidar_bnw_cam_offset_down", 0.0);
+	 _node.declare_parameter<float>("bnw_cam_marker_offset_front", 0.0);
+	 _node.declare_parameter<float>("bnw_cam_marker_offset_right", 0.0);
+
+	
+	 _node.get_parameter("camera_namespace_color", _camera_namespace_color);
+	 _node.get_parameter("camera_namespace_bnw", _camera_namespace_bnw);
 	 _node.get_parameter("ascent_vel", _param_ascent_vel);
 	 _node.get_parameter("descent_vel", _param_descent_vel);
 	 _node.get_parameter("hold_vel", _param_hold_vel);
@@ -103,15 +118,28 @@
 	 _node.get_parameter("loaded_land_z", _param_loaded_land_z);
 	 _node.get_parameter("inclined_angle", _param_inclined_angle);
 	 _node.get_parameter("vel_tune", _param_vel_tune);
-	 _node.get_parameter("cam_gripper_offset_front", _param_cam_gripper_offset_front);
-	 _node.get_parameter("cam_gripper_offset_right", _param_cam_gripper_offset_right);
-	 _node.get_parameter("cam_gripper_offset_down", _param_cam_gripper_offset_down);
-	 _node.get_parameter("lidar_cam_offset_front", _param_lidar_cam_offset_front);
-	 _node.get_parameter("lidar_cam_offset_right", _param_lidar_cam_offset_right);
-	 _node.get_parameter("lidar_cam_offset_down", _param_lidar_cam_offset_down);
-	 _node.get_parameter("cam_marker_offset_front", _param_cam_marker_offset_front);
-	 _node.get_parameter("cam_marker_offset_right", _param_cam_marker_offset_right);
+	 // Retrieve parameters for color camera
+	 _node.get_parameter("color_cam_gripper_offset_front", _param_color_cam_gripper_offset_front);
+	 _node.get_parameter("color_cam_gripper_offset_right", _param_color_cam_gripper_offset_right);
+	 _node.get_parameter("color_cam_gripper_offset_down", _param_color_cam_gripper_offset_down);
+	 _node.get_parameter("lidar_color_cam_offset_front", _param_lidar_color_cam_offset_front);
+	 _node.get_parameter("lidar_color_cam_offset_right", _param_lidar_color_cam_offset_right);
+	 _node.get_parameter("lidar_color_cam_offset_down", _param_lidar_color_cam_offset_down);
+	 _node.get_parameter("color_cam_marker_offset_front", _param_color_cam_marker_offset_front);
+	 _node.get_parameter("color_cam_marker_offset_right", _param_color_cam_marker_offset_right);
+
+	 // Retrieve parameters for bnw camera
+	 _node.get_parameter("bnw_cam_gripper_offset_front", _param_bnw_cam_gripper_offset_front);
+	 _node.get_parameter("bnw_cam_gripper_offset_right", _param_bnw_cam_gripper_offset_right);
+	 _node.get_parameter("bnw_cam_gripper_offset_down", _param_bnw_cam_gripper_offset_down);
+	 _node.get_parameter("lidar_bnw_cam_offset_front", _param_lidar_bnw_cam_offset_front);
+	 _node.get_parameter("lidar_bnw_cam_offset_right", _param_lidar_bnw_cam_offset_right);
+	 _node.get_parameter("lidar_bnw_cam_offset_down", _param_lidar_bnw_cam_offset_down);
+	 _node.get_parameter("bnw_cam_marker_offset_front", _param_bnw_cam_marker_offset_front);
+	 _node.get_parameter("bnw_cam_marker_offset_right", _param_bnw_cam_marker_offset_right);
+
 	 _node.get_parameter("origin_height", _param_origin_height);
+
  
 	 RCLCPP_INFO(_node.get_logger(), "ascent_vel: %f", _param_ascent_vel);
 	 RCLCPP_INFO(_node.get_logger(), "descent_vel: %f", _param_descent_vel);
@@ -153,13 +181,9 @@
  
  void PrecisionLand::targetPoseColorCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
  {
-	//  double x = 0.785, y = 2;
-	float angle_radian = _param_inclined_angle * (M_PI/180.0);
-	float delta_y = _param_cam_gripper_offset_front*pow(sin(angle_radian),2) + _param_cam_marker_offset_front;
-	float delta_z = _param_cam_gripper_offset_front/2*sin(2*angle_radian);
 	 if (_is_active_cam_color){
 		 auto tag = ArucoTag {
-			 .position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y+delta_y, msg->pose.position.z+delta_z),
+			 .position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
 			 .orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
 			 .timestamp = _node.now(),
 		 };
@@ -167,26 +191,24 @@
 		 // Save tag position/orientation in NED world frame
 		 _tag = getTagWorld(tag);
 		 // RCLCPP_INFO(_node.get_logger(), "color");
+		 _above_ground_altitude = msg->pose.position.z;
 	 }
-	 _above_ground_altitude = msg->pose.position.z+delta_z;
  }
  
  void PrecisionLand::targetPoseBnwCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
  {
-	float angle_radian = _param_inclined_angle * (M_PI/180.0);
-	float delta_y = _param_cam_gripper_offset_front*pow(sin(angle_radian),2) + _param_cam_marker_offset_front;
-	float delta_z = _param_cam_gripper_offset_front/2*sin(2*angle_radian);
 	 if (!(_is_active_cam_color)){
+		 float delta_y = -_param_bnw_cam_gripper_offset_front*pow(sin(_param_inclined_angle),2) - _param_bnw_cam_marker_offset_front;
+		 
 		 auto tag = ArucoTag {
-			 .position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y+delta_y, msg->pose.position.z+delta_z),
+			 .position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y+delta_y, msg->pose.position.z),
 			 .orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
 			 .timestamp = _node.now(),
 		 };
 		 // Save tag position/orientation in NED world frame
 		 _tag = getTagWorld(tag);
-		 // RCLCPP_INFO(_node.get_logger(), "bnw");
+		 _above_ground_altitude = msg->pose.position.z;
 	 }	
-	 _above_ground_altitude = msg->pose.position.z+delta_z;
  }
  
  void PrecisionLand::is_active_cam_color_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -310,12 +332,16 @@
 		//  _above_ground_altitude = tag_position.z()
 		 // _above_ground_altitude = _above_ground_altitude + _tag.position.z();			// ACTUAL
 		//  RCLCPP_INFO(_node.get_logger(), "Above Ground Height: %f", _above_ground_altitude);
-		 if (_aruco_id == 3)	// loaded
-			 _target_z = _param_loaded_robot_z;
+		 if (_aruco_id == 3){	// loaded	
+			 float delta_z = _param_bnw_cam_gripper_offset_front/2*sin(2*_param_inclined_angle);
+			 _target_z = _param_loaded_robot_z + abs(delta_z);
+		 }
 		 else{
 			 if (_aruco_id == 1){
 				_target_z = _param_loaded_land_z;
-				_param_inclined_angle = 0.0;
+				RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _target_z, _param_loaded_land_z, _above_ground_altitude);
+				if (_is_active_cam_color)
+					_param_inclined_angle = 0.0;
 			 }
 		 }
 			 
@@ -329,7 +355,7 @@
 			 }
 		 }
 		 else{
-			//  RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _vehicle_local_position->positionNed().z(), _tag.position.z(), _above_ground_altitude);
+			 RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f)", _target_z, _above_ground_altitude);
 			 
 			 // if (_above_ground_altitude <= _target_z + 0.05f && _above_ground_altitude >= _target_z - 0.05f)
 			 if(abs(_above_ground_altitude - _target_z) <= 0.05f){
@@ -371,12 +397,15 @@
 		//  _above_ground_altitude = tag_position.z()
 		 // _above_ground_altitude = _above_ground_altitude + _tag.position.z();		// ACTUAL
 		//  RCLCPP_INFO(_node.get_logger(), "Above Ground Height: %f", _above_ground_altitude);
-		 if (_aruco_id == 3)	// loaded
-			 _target_z = _param_loaded_robot_z;
+		 if (_aruco_id == 3){	// loaded
+			 float delta_z = _param_bnw_cam_gripper_offset_front/2*sin(2*_param_inclined_angle);
+			 _target_z = _param_loaded_robot_z + abs(delta_z);
+		 }
 		 else{
 			 if (_aruco_id == 1){
 				_target_z = _param_loaded_land_z;
-				_param_inclined_angle = 0.0;
+				if (_is_active_cam_color)
+					_param_inclined_angle = 0.0;
 			 }
 		 }
  

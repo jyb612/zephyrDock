@@ -10,8 +10,8 @@ commands = [
     # Run rqt_image
     "ros2 run rqt_image_view rqt_image_view && exit",
 
-    # Run the Micro XRCE-DDS Agent
-    "cd && MicroXRCEAgent serial --dev /dev/ttyTHS1 -b 921600 && exit",
+    # # Run the Micro XRCE-DDS Agent
+    # "cd && MicroXRCEAgent serial --dev /dev/ttyTHS1 -b 921600 && exit",
 
     # # Run QGroundControl
     # "cd && ./QGroundControl-x86_64.AppImage",

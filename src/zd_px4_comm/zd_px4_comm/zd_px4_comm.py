@@ -123,21 +123,22 @@ class ZDCommNode(Node):
         self.current_euler = [0.0, 0.0, 0.0] # roll, pitch, yaw (rad)
         self.origin_position = [0.0, 0.0, 0.0]
         self.above_ground_altitude = None  # To store the current altitude
-        self.solar_panel_angle_in_rad = 20
+        self.solar_panel_angle_in_rad = 0.0
         self.ultrasonic_left_range32 = None
         self.ultrasonic_right_range34 = None
         self.aruco_id = 0
 
         self.search_altitude = -8.0  # Takeoff altitude in NED (8 meters up)
-        self.pre_home_descend_altitude = -3.5
+        self.pre_home_descend_altitude = -3.0
         self.deploy_altitude = -6.0
         self.waypoint_home = [0.0, 0.0, self.search_altitude]
-        self.waypoint_solar_panel = [-6.0, 0.0, self.search_altitude]
+        self.waypoint_solar_panel = [0.0, 0.0, self.search_altitude]
+        self.waypoint_solar_panel_distance = 5.0
         self.angular_velocity_threshold = 0.01  # Threshold for angular velocity (radians per second)
         self.time_threshold = 3.0
         self.hori_grip_height = None
         self.lidar_cam_offset_front = 0.15      ## ATTENTION
-        self.offset = 3.0
+        self.z_offset = -3.0
 
         self.waypoint = "HOME"
         self.current_mode = None  # Current flight mode
@@ -504,7 +505,7 @@ class ZDCommNode(Node):
                     self.anchor_position[2] = self.origin_position[2]
 
                     # define waypoint to solar panel
-                    x, y =self.calculate_destination(x0=self.origin_position[0], y0=self.origin_position[1], theta=180.0, phi=0.0, d=5.0)
+                    x, y =self.calculate_destination(x0=self.origin_position[0], y0=self.origin_position[1], theta=math.degrees(self.current_euler[2]), phi=90.0, d=self.waypoint_solar_panel_distance)
                     self.waypoint_solar_panel[0] = x
                     self.waypoint_solar_panel[1] = y
                     self.waypoint_solar_panel[2] = self.origin_position[2] + self.search_altitude
@@ -542,7 +543,12 @@ class ZDCommNode(Node):
                 self.publish_offboard_control_mode()
                 self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=self.current_position[2], yaw=self.anchor_position[3])
                 self.loop_once = True
-                # self.get_logger().info("Switched to Offboard mode")
+                if self.service_mode == 'D':
+                    takeoff_altitude = self.pre_home_descend_altitude
+                else:
+                    takeoff_altitude = self.search_altitude # waypoint to solar panel (return robot)
+
+                self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {takeoff_altitude}m")
             
             if self.service_mode == 'D':
                 takeoff_altitude = self.pre_home_descend_altitude
@@ -601,6 +607,8 @@ class ZDCommNode(Node):
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
                 self.loop_once = True
                 self.get_logger().info("Initiate Phase 1 Descent.")
+                z = self.origin_position[2] + self.pre_home_descend_altitude
+                self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {z}m")
             z = self.origin_position[2] + self.pre_home_descend_altitude
             if self.current_position[2] - z >= -0.1:
                 self.state = "CUSTOM_PRECISION_DESCEND"
@@ -639,6 +647,7 @@ class ZDCommNode(Node):
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
                     self.publish_offboard_control_mode()
                     self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.anchor_position[2], yaw=self.anchor_position[3])
+                    self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {self.anchor_position[2]}m")
                 self.loop_once = True
                 self.hover_start_time = time.time()
                 if not self.gripper_gripped:
@@ -683,6 +692,7 @@ class ZDCommNode(Node):
             else:
                 takeoff_altitude = self.search_altitude
             z = self.origin_position[2] + takeoff_altitude
+            # self.get_logger().info(f"Current: {self.current_position[2]} Target: {takeoff_altitude}")
             self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=z, yaw=self.anchor_position[3])  # Ascend to takeoff altitude
             if abs(self.current_position[2] - z) <= 0.2:  # Allow small tolerance
                 isgood = True
@@ -724,6 +734,7 @@ class ZDCommNode(Node):
                 self.loop_once = True
                 self.waypoint = "SOLAR PANEL"
                 self.get_logger().info("Initiate waypoint to Solar Panel")
+                self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {self.anchor_position[2]}m")
             
             self.publish_trajectory_setpoint(x=self.waypoint_solar_panel[0], y=self.waypoint_solar_panel[1], z=self.waypoint_solar_panel[2], yaw=self.anchor_position[3])
             self.publish_offboard_control_mode()
@@ -788,9 +799,9 @@ class ZDCommNode(Node):
 
 
         elif self.state == "DEPLOY_DESCEND":        ## ATTENTION
-            # z = self.hori_grip_height- self.lidar_cam_offset_front*math.tan(self.solar_panel_angle_in_rad) - self.offset # ACTUAL
+            # z = self.hori_grip_height- self.lidar_cam_offset_front*math.tan(self.solar_panel_angle_in_rad) + self.z_offset # ACTUAL
             # altitude_difference = self.above_ground_altitude - z      # ACTUAL
-            z = self.origin_position[2] + self.hori_grip_height - self.lidar_cam_offset_front*math.tan(self.solar_panel_angle_in_rad) - self.offset # SIM
+            z = self.origin_position[2] + self.hori_grip_height - self.lidar_cam_offset_front*math.tan(self.solar_panel_angle_in_rad) + self.deploy_altitude # SIM
             altitude_difference = self.current_position[2] - z      # SIM
             descend_rate = 1
             if altitude_difference <= -4:  # If much higher than target (more negative)
@@ -825,6 +836,7 @@ class ZDCommNode(Node):
             if not self.loop_once:
                 self.loop_once = True
                 self.get_logger().info("Waypoint to Home")
+                self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {self.waypoint_home[2]}m")
             self.publish_offboard_control_mode()
             self.publish_trajectory_setpoint(x=self.waypoint_home[0], y=self.waypoint_home[1], z=self.waypoint_home[2], yaw = self.anchor_position[3])
             
