@@ -19,13 +19,7 @@ def generate_launch_description():
     return LaunchDescription([
         # ExecuteProcess(cmd=['bash', bash_script_path], output='screen'),
         
-        # Node(
-        #     package='zd_px4_comm',
-        #     namespace='zd_px4_comm',
-        #     executable='zd_processes_actual',
-        #     name='zd_processes_actual',
-        #     prefix='gnome-terminal --'
-        # ),
+        
 
         Node(               # SIM
             package='zd_px4_comm',
@@ -46,7 +40,15 @@ def generate_launch_description():
             ]
         ), 
 
-        # # Launch Aruco Tracker node from aruco_tracker package
+        # Node(
+        #     package='zd_px4_comm',
+        #     namespace='zd_px4_comm',
+        #     executable='zd_processes_actual',
+        #     name='zd_processes_actual',
+        #     prefix='gnome-terminal --'
+        # ),
+
+        # # # Launch Aruco Tracker node from aruco_tracker package
         # Node(
         #     package='aruco_tracker',
         #     executable='aruco_tracker',
@@ -58,7 +60,7 @@ def generate_launch_description():
         #     ]
         # ),    
 
-        # # Launch Aruco Tracker node from aruco_tracker package
+        # # # Launch Aruco Tracker node from aruco_tracker package
         # Node(
         #     package='aruco_tracker',
         #     executable='aruco_tracker',
@@ -72,7 +74,7 @@ def generate_launch_description():
 
         # Add a delay (e.g., 5 seconds) before launching the precision_land node
         TimerAction(
-            period=20.0,  # Delay for 5 seconds
+            period=5.0,  # Delay for 5 seconds
             actions=[
                 Node(
                     package='precision_land',

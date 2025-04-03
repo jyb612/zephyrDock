@@ -27,6 +27,7 @@ commands = [
       --ros-args \
       -r __ns:=/color_camera \
       -p video_device:=/dev/video0 \
+      -p image_transport:=raw \
       -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_color.yaml && exit",
 
     #Run camera bnw plug second
@@ -34,6 +35,7 @@ commands = [
       --ros-args \
       -r __ns:=/bnw_camera \
       -p video_device:=/dev/video2 \
+      -p image_transport:=raw \
       -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_bnw.yaml && exit",
 
 ]

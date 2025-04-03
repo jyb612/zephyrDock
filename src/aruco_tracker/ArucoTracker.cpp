@@ -32,6 +32,10 @@ ArucoTrackerNode::ArucoTrackerNode()
 	? "/image_proc"
 	: _camera_namespace + "/image_proc";
 
+	std::string aruco_detected_topic = _camera_namespace.empty()
+	? "/aruco_detected"
+	: _camera_namespace + "/aruco_detected";
+
 	_image_sub = create_subscription<sensor_msgs::msg::Image>(
             image_topic, qos, 
             std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1)
@@ -60,6 +64,7 @@ ArucoTrackerNode::ArucoTrackerNode()
 	_image_pub = create_publisher<sensor_msgs::msg::Image>(image_proc_topic, qos);
 	_target_pose_pub = create_publisher<geometry_msgs::msg::PoseStamped>(target_pose_topic, qos);
 	_isloaded_pub = create_publisher<std_msgs::msg::Bool>("/isloaded", 10);
+	_aruco_detected_pub = create_publisher<std_msgs::msg::Bool>(aruco_detected_topic, 10);
 }
 
 void ArucoTrackerNode::loadParameters()
@@ -77,6 +82,7 @@ void ArucoTrackerNode::loadParameters()
 void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
 {
 	try {
+		_aruco_detected.data = false;
 		// Convert ROS image message to OpenCV image
 		cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
 
@@ -104,7 +110,7 @@ void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr m
 				if (ids[i] != _param_aruco_id) {
 					continue;
 				}
-
+				_aruco_detected.data = true;
 				// Calculate marker size from camera intrinsics
 				float half_size = _param_marker_size / 2.0f;
 				std::vector<cv::Point3f> objectPoints = {
@@ -175,6 +181,7 @@ void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr m
 		out_msg.encoding = sensor_msgs::image_encodings::BGR8;
 		out_msg.image = cv_ptr->image;
 		_image_pub->publish(*out_msg.toImageMsg().get());
+		_aruco_detected_pub->publish(_aruco_detected);
 
 	} catch (const cv_bridge::Exception& e) {
 		RCLCPP_ERROR(get_logger(), "cv_bridge exception: %s", e.what());

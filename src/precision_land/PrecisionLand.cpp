@@ -26,6 +26,14 @@
 	 std::string target_pose_bnw_topic = _camera_namespace_bnw.empty()
 	 ? "/target_pose"
 	 : _camera_namespace_bnw + "/target_pose";
+
+	 std::string aruco_detected_color_topic = _camera_namespace_color.empty()
+	 ? "/aruco_detected"
+	 : _camera_namespace_color + "/aruco_detected";
+
+	 std::string aruco_detected_bnw_topic = _camera_namespace_bnw.empty()
+	 ? "/aruco_detected"
+	 : _camera_namespace_bnw + "/aruco_detected";
  
 	 _trajectory_setpoint = std::make_shared<px4_ros2::TrajectorySetpointType>(*this);
  
@@ -47,6 +55,12 @@
  
 	 _isloaded_sub = _node.create_subscription<std_msgs::msg::Bool>("/isloaded", 
 			 10, std::bind(&PrecisionLand::isLoadedCallback, this, std::placeholders::_1));
+
+	 _aruco_detected_color_sub = _node.create_subscription<std_msgs::msg::Bool>(aruco_detected_color_topic, 
+			 10, std::bind(&PrecisionLand::arucoDetectedColorCallback, this, std::placeholders::_1));
+	
+	 _aruco_detected_bnw_sub = _node.create_subscription<std_msgs::msg::Bool>(aruco_detected_bnw_topic, 
+			 10, std::bind(&PrecisionLand::arucoDetectedBnwCallback, this, std::placeholders::_1));
  
 	 _target_pose_color_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>(target_pose_color_topic,
 		 rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetPoseColorCallback, this, std::placeholders::_1));
@@ -173,6 +187,24 @@
 	 else
 		 _isloaded = false;
  }
+
+ void PrecisionLand::arucoDetectedColorCallback(const std_msgs::msg::Bool::SharedPtr msg)	// unused?
+ {
+	 // Process the received boolean message
+	 if (msg->data)
+		 _aruco_detected_color = true;
+	 else
+	 	 _aruco_detected_color = false;
+ }
+
+ void PrecisionLand::arucoDetectedBnwCallback(const std_msgs::msg::Bool::SharedPtr msg)	// unused?
+ {
+	 // Process the received boolean message
+	 if (msg->data)
+	 	 _aruco_detected_bnw = true;
+	 else
+	 	 _aruco_detected_bnw = false;
+ }
  
  void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg)
  {
@@ -277,8 +309,7 @@
 		 break;
 	 }
 	 case State::Search: {
- 
-		 if (!std::isnan(_tag.position.x())) {
+		 if (_aruco_detected_color || _aruco_detected_bnw) {
 			 _approach_altitude = _vehicle_local_position->positionNed().z();
 			 switchToState(State::Approach);
 			 break;
@@ -295,7 +326,6 @@
 				 _search_waypoint_index = 0;
 			 }
 		 }
- 
 		 break;
 	 }
  
@@ -355,7 +385,7 @@
 			 }
 		 }
 		 else{
-			 RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f)", _target_z, _above_ground_altitude);
+			//  RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f)", _target_z, _above_ground_altitude);
 			 
 			 // if (_above_ground_altitude <= _target_z + 0.05f && _above_ground_altitude >= _target_z - 0.05f)
 			 if(abs(_above_ground_altitude - _target_z) <= 0.05f){
@@ -505,58 +535,23 @@
 	 // Generate spiral search waypoints
 	 // The search waypoints are generated in the NED frame
 	 // Parameters for the search pattern
-	 double start_x = 0.0;
-	 double start_y = 0.0;
+	 double start_x = _vehicle_local_position->positionNed().x();
+	 double start_y = _vehicle_local_position->positionNed().y();
 	 double current_z = _vehicle_local_position->positionNed().z();
-	 auto min_z = -1.0;
- 
-	 double max_radius = 2.0;
-	 double layer_spacing = 0.5;
-	 int points_per_layer = 16;
+	 double step_size = 0.5; // Adjust step size for spacing between points
 	 std::vector<Eigen::Vector3f> waypoints;
- 
-	 // Generate waypoints
-	 // Calculate the number of layers needed
-	 int num_layers = (static_cast<int>((min_z - current_z) / layer_spacing) / 2) < 1 ? 1 : (static_cast<int>((min_z - current_z) / layer_spacing) / 2);
- 
-	 // Generate waypoints
-	 for (int layer = 0; layer < num_layers; ++layer) {
-		 std::vector<Eigen::Vector3f> layer_waypoints;
- 
-		 // Spiral out to max radius
-		 double radius = 0.0;
- 
-		 for (int point = 0; point < points_per_layer + 1; ++point) {
-			 double angle = 2.0 * M_PI * point / points_per_layer;
-			 double x = start_x + radius * cos(angle);
-			 double y = start_y + radius * sin(angle);
-			 double z = current_z;
- 
-			 layer_waypoints.push_back(Eigen::Vector3f(x, y, z));
-			 radius += max_radius / points_per_layer;
-		 }
- 
-		 // Push the spiral out waypoints to the main waypoints vector
-		 waypoints.insert(waypoints.end(), layer_waypoints.begin(), layer_waypoints.end());
- 
-		 // Decrease the altitude for the inward spiral
-		 current_z += layer_spacing;
- 
-		 // Reverse the layer waypoints for spiral in
-		 std::reverse(layer_waypoints.begin(), layer_waypoints.end());
- 
-		 // Adjust the z-coordinate for the inward spiral
-		 for (auto& waypoint : layer_waypoints) {
-			 waypoint.z() = current_z;
-		 }
- 
-		 // Push the reversed waypoints to the main waypoints vector
-		 waypoints.insert(waypoints.end(), layer_waypoints.begin(), layer_waypoints.end());
- 
-		 // Decrease the altitude for the next outward spiral
-		 current_z += layer_spacing;
-	 }
- 
+
+	 // 9 search points in sequence
+	 waypoints.push_back(Eigen::Vector3f(start_x, start_y, current_z)); // P0: Current position
+	 waypoints.push_back(Eigen::Vector3f(start_x + step_size, start_y, current_z)); // P1: Right
+	 waypoints.push_back(Eigen::Vector3f(start_x + step_size, start_y + step_size, current_z)); // P2: Front-right
+	 waypoints.push_back(Eigen::Vector3f(start_x + step_size, start_y - step_size, current_z)); // P3: Right-behind
+	 waypoints.push_back(Eigen::Vector3f(start_x, start_y - step_size, current_z)); // P4: Behind
+	 waypoints.push_back(Eigen::Vector3f(start_x - step_size, start_y - step_size, current_z)); // P5: Left-behind
+	 waypoints.push_back(Eigen::Vector3f(start_x - step_size, start_y, current_z)); // P6: Left
+	 waypoints.push_back(Eigen::Vector3f(start_x - step_size, start_y + step_size, current_z)); // P7: Front-left
+	 waypoints.push_back(Eigen::Vector3f(start_x, start_y + step_size, current_z)); // P8: Front
+
 	 _search_waypoints = waypoints;
  }
  

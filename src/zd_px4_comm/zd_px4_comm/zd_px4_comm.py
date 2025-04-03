@@ -8,6 +8,9 @@ import time
 from std_msgs.msg import Int32, Bool, Float32, Float32MultiArray  # For servo command
 import math
 import numpy as np
+import csv
+from datetime import datetime
+import os
 
 MAIN_VEHICLE_MODE_OFFBOARD = 6.0         # Offboard param 1 = 1.0
 
@@ -163,6 +166,14 @@ class ZDCommNode(Node):
         # Timer to control the state machine
         self.timer = self.create_timer(0.5, self.timer_callback)  # 2Hz
 
+        # Create logs directory if needed
+        os.makedirs('logs', exist_ok=True)
+        
+        # Open CSV file
+        self.odom_log = open(f'logs/odometry_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv', 'w')
+        self.odom_writer = csv.writer(self.odom_log)
+        self.odom_writer.writerow(['timestamp', 'x', 'y', 'z'])
+
     def lidar_range_callback(self, msg):
         self.above_ground_altitude = -float(msg.data)   # negative sign for FRD NED coordinate system
 
@@ -194,6 +205,15 @@ class ZDCommNode(Node):
             float(msg.angular_velocity[1]),  # Pitch angular velocity
             float(msg.angular_velocity[2]),  # Yaw angular velocity
         ]
+
+        # Simple logging - just position and timestamp
+        self.odom_writer.writerow([
+            time.time(),
+            self.current_position[0],
+            self.current_position[1],
+            self.current_position[2]
+        ])
+
         # self.get_logger().info(f"(X={msg.position[0]}, Y={msg.position[1]}, Z={msg.position[2]})")
 
         # Extract quaternion
@@ -540,15 +560,15 @@ class ZDCommNode(Node):
         elif self.state == "TAKEOFF":
             if not self.loop_once:
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)
-                self.publish_offboard_control_mode()
-                self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=self.current_position[2], yaw=self.anchor_position[3])
+                self.publish_offboard_control_mode()     
                 self.loop_once = True
                 if self.service_mode == 'D':
                     takeoff_altitude = self.pre_home_descend_altitude
                 else:
                     takeoff_altitude = self.search_altitude # waypoint to solar panel (return robot)
-
-                self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {takeoff_altitude}m")
+                z = self.origin_position[2] + takeoff_altitude
+                self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {z}m")
+                self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=z, yaw=self.anchor_position[3])
             
             if self.service_mode == 'D':
                 takeoff_altitude = self.pre_home_descend_altitude
@@ -747,6 +767,7 @@ class ZDCommNode(Node):
             if self.stable_check(isgood):
                 if self.service_mode == 'D':
                     self.state = "DEPLOY_DESCEND"
+                    self.get_logger().info("Start to deploy (blinded descend)")
                     # self.state = "ALIGN_SOLAR_PANEL"
                     # Begin aligning with solar panel (yawing)
                     # self.get_logger().info("Yawing until ultrasonic sensor readings tally...")
@@ -875,6 +896,7 @@ def main(args=None):
         node.get_logger().info("Keyboard Interrupt detected. Shutting down...")
     finally:
         node.destroy_node()
+        node.odom_log.close()  # Ensure file is properly closed
         # Check if ROS is still running before shutting down
         if rclpy.ok():
             rclpy.shutdown()

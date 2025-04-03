@@ -38,6 +38,7 @@ private:
 	rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_pub;
 	
 	rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr _isloaded_pub;
+	rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr _aruco_detected_pub;
 
 	std::unique_ptr<cv::aruco::ArucoDetector> _detector;
 	cv::Mat _camera_matrix;
@@ -49,4 +50,5 @@ private:
 	std::string _camera_namespace;
 	// bool ascend_indicator = false;
 	std_msgs::msg::Bool _isloaded;
+	std_msgs::msg::Bool _aruco_detected;
 };
