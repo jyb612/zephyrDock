@@ -1,19 +1,26 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 import serial
 
 class TFMiniLidarNode(Node):
     def __init__(self):
         super().__init__('tfmini_lidar_node')
 
+        sensor_qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,  # Or RELIABLE if critical
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=5  # Moderate buffer for sensor data
+        )
+
         # Initialize publisher for distance and signal strength
-        self.distance_publisher = self.create_publisher(Float32, '/tfmini/range', 10)
-        self.strength_publisher = self.create_publisher(Float32, '/tfmini/strength', 10)
+        self.distance_publisher = self.create_publisher(Float32, '/tfmini/range', sensor_qos)
+        self.strength_publisher = self.create_publisher(Float32, '/tfmini/strength', sensor_qos)
 
         # Setup serial communication
         self.serial_port = serial.Serial("/dev/ttyUSB0", 115200, timeout=0.1)
-        self.timer = self.create_timer(0.05, self.get_tfmini_data)  # 10Hz polling rate
+        self.timer = self.create_timer(0.1, self.get_tfmini_data)  # 10Hz polling rate
 
     def get_tfmini_data(self):
         """ Reads data from TF Mini LiDAR and publishes distance and signal strength. """

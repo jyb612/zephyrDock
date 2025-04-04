@@ -21,58 +21,55 @@ def generate_launch_description():
         
         
 
-        Node(               # SIM
+        # Node(               # SIM
+        #     package='zd_px4_comm',
+        #     namespace='zd_px4_comm',
+        #     executable='zd_processes',
+        #     name='zd_processes',
+        #     prefix='gnome-terminal --'
+        # ),
+        
+        # Node(
+        #     package='aruco_tracker',
+        #     executable='aruco_tracker',
+        #     name='aruco_tracker',
+        #     output='screen',
+        #     parameters=[
+        #         PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml'])
+        #     ]
+        # ), 
+
+        Node(
             package='zd_px4_comm',
             namespace='zd_px4_comm',
-            executable='zd_processes',
-            name='zd_processes',
+            executable='zd_processes_actual',
+            name='zd_processes_actual',
             prefix='gnome-terminal --'
         ),
-        
-        # Launch Aruco Tracker node from aruco_tracker package
+
         Node(
             package='aruco_tracker',
             executable='aruco_tracker',
             name='aruco_tracker',
             output='screen',
             parameters=[
-                PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml'])
+                PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
+                {'camera_namespace': '/color_camera'}  # Adding camera_namespace parameter
             ]
-        ), 
+        ),    
 
-        # Node(
-        #     package='zd_px4_comm',
-        #     namespace='zd_px4_comm',
-        #     executable='zd_processes_actual',
-        #     name='zd_processes_actual',
-        #     prefix='gnome-terminal --'
-        # ),
+        Node(
+            package='aruco_tracker',
+            executable='aruco_tracker',
+            name='aruco_tracker',
+            output='screen',
+            parameters=[
+                PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
+                {'camera_namespace': '/bnw_camera'}
+            ]
+        ),    
 
-        # # # Launch Aruco Tracker node from aruco_tracker package
-        # Node(
-        #     package='aruco_tracker',
-        #     executable='aruco_tracker',
-        #     name='aruco_tracker',
-        #     output='screen',
-        #     parameters=[
-        #         PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
-        #         {'camera_namespace': '/color_camera'}  # Adding camera_namespace parameter
-        #     ]
-        # ),    
-
-        # # # Launch Aruco Tracker node from aruco_tracker package
-        # Node(
-        #     package='aruco_tracker',
-        #     executable='aruco_tracker',
-        #     name='aruco_tracker',
-        #     output='screen',
-        #     parameters=[
-        #         PathJoinSubstitution([FindPackageShare('aruco_tracker'), 'cfg', 'params.yaml']),
-        #         {'camera_namespace': '/bnw_camera'}
-        #     ]
-        # ),    
-
-        # Add a delay (e.g., 5 seconds) before launching the precision_land node
+        # # Add a delay (e.g., 5 seconds) before launching the precision_land node
         TimerAction(
             period=5.0,  # Delay for 5 seconds
             actions=[

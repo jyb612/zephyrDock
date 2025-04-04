@@ -1,12 +1,19 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Int32, Float32
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from pymodbus.client import ModbusSerialClient
 import time
 
 class ServoController(Node):
     def __init__(self):
         super().__init__('servo_controller')
+
+        critical_qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=10
+        )
 
         # Define Serial Modbus Connection
         self.servo_port = "/dev/ttyUSB1"  # Change this to the correct port
@@ -25,16 +32,16 @@ class ServoController(Node):
                 Int32,
                 '/servo_command',  
                 self.command_callback,
-                10
+                critical_qos
             )
 
             # Publishers for feedback data
-            self.position_pub = self.create_publisher(Int32, '/servo_position', 10)
-            self.speed_pub = self.create_publisher(Int32, '/servo_speed', 10)
-            self.voltage_pub = self.create_publisher(Float32, '/servo_voltage', 10)
-            self.temperature_pub = self.create_publisher(Int32, '/servo_temperature', 10)
-            self.moving_pub = self.create_publisher(Int32, '/servo_moving', 10)
-            self.current_pub = self.create_publisher(Int32, '/servo_current', 10)
+            self.position_pub = self.create_publisher(Int32, '/servo_position', critical_qos)
+            self.speed_pub = self.create_publisher(Int32, '/servo_speed', critical_qos)
+            self.voltage_pub = self.create_publisher(Float32, '/servo_voltage', critical_qos)
+            self.temperature_pub = self.create_publisher(Int32, '/servo_temperature', critical_qos)
+            self.moving_pub = self.create_publisher(Int32, '/servo_moving', critical_qos)
+            self.current_pub = self.create_publisher(Int32, '/servo_current', critical_qos)
 
             # Start a timer to read the feedback every 100ms
             self.feedback_timer = self.create_timer(0.1, self.feedback_callback)

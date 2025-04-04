@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32
 import smbus2
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 import time
 
 # I2C Addresses of the GY-US42v2 sensors after address change
@@ -12,12 +13,18 @@ class DualUltrasonicNode(Node):
     def __init__(self):
         super().__init__('ultrasonic_dual_node')
 
+        sensor_qos = QoSProfile(
+                    reliability=QoSReliabilityPolicy.BEST_EFFORT,  # Or RELIABLE if critical
+                    history=QoSHistoryPolicy.KEEP_LAST,
+                    depth=5  # Moderate buffer for sensor data
+                )
+
         # Initialize I2C bus 1 (on Jetson Orin Nano)
         self.bus = smbus2.SMBus(7)
 
         # Create ROS2 publishers for both sensors
-        self.publisher_left = self.create_publisher(Float32, '/gyus42v2/left_range32', 10)
-        self.publisher_right = self.create_publisher(Float32, '/gyus42v2/right_range34', 10)
+        self.publisher_left = self.create_publisher(Float32, '/gyus42v2/left_range32', sensor_qos)
+        self.publisher_right = self.create_publisher(Float32, '/gyus42v2/right_range34', sensor_qos)
 
         # Read sensors at 10Hz (100ms interval)
         self.timer = self.create_timer(0.1, self.read_sensors)

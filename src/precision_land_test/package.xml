@@ -1,0 +1,15 @@
+<package format="2">
+  <name>precision_land_test</name>
+  <version>0.0.1</version>
+  <description>Test node for precision landing</description>
+  <maintainer email="your_email@example.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

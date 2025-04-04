@@ -16,27 +16,28 @@ commands = [
     # # Run QGroundControl
     # "cd && ./QGroundControl-x86_64.AppImage",
 
-    # Run tf mini lidar
-    "ros2 run sensor_interface lidar && exit",
-
     # # Run dual ultrasonic sensor
     # "ros2 run sensor_interface ultrasonic_dual && exit",
 
+    "ros2 launch v4l2_camera raw_camera.launch.py && exit",
+
+    "ros2 run sensor_interface lidar && exit",
+
+    # "ros2 topic echo /fmu/out/vehicle_odometry && exit",
+
     # Run camera color plug first
-    "ros2 run v4l2_camera v4l2_camera_node \
-      --ros-args \
-      -r __ns:=/color_camera \
-      -p video_device:=/dev/video0 \
-      -p image_transport:=raw \
-      -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_color.yaml && exit",
+    # "ros2 run v4l2_camera v4l2_camera_node \
+    #   --ros-args \
+    #   -r __ns:=/color_camera \
+    #   -p video_device:=/dev/video0 \
+    #   -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_color.yaml && exit",
 
     #Run camera bnw plug second
-    "ros2 run v4l2_camera v4l2_camera_node \
-      --ros-args \
-      -r __ns:=/bnw_camera \
-      -p video_device:=/dev/video2 \
-      -p image_transport:=raw \
-      -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_bnw.yaml && exit",
+    # "ros2 run v4l2_camera v4l2_camera_node \
+    #   --ros-args \
+    #   -r __ns:=/bnw_camera \
+    #   -p video_device:=/dev/video2 \
+    #   -p camera_info_url:=file:///home/crestjj/zephyrDock/src/ros2_v4l2_camera/config/calcam_bnw.yaml && exit",
 
 ]
 

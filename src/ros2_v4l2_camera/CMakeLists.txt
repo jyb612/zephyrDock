@@ -58,6 +58,10 @@ install(
   RUNTIME DESTINATION bin
 )
 
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
 add_executable(v4l2_camera_node src/v4l2_camera_node.cpp)
 target_include_directories(v4l2_camera_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

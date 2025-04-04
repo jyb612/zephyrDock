@@ -1,7 +1,5 @@
 precision_land:
   ros__parameters:
-    camera_namespace_color: "/color_camera"
-    camera_namespace_bnw: "/bnw_camera"
     ascent_vel: -0.40
     descent_vel: 0.2
     hold_vel: -0.01

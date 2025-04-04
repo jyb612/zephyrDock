@@ -1,5 +1,5 @@
 aruco_tracker:
   ros__parameters:
-    aruco_id: 1
+    aruco_id: 2
     dictionary: 2
-    marker_size: 0.17
+    marker_size: 0.14

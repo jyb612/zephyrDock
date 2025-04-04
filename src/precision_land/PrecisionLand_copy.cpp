@@ -19,146 +19,68 @@
 	 : ModeBase(node, kModeName)
 	 , _node(node)
  {
-	// ======================
-	// QoS Profile Definitions
-	// ======================
-	auto px4_control_qos = rclcpp::QoS(1).best_effort();  // PX4 control (low latency)
-		
-	auto critical_qos = rclcpp::QoS(10).reliable();  // Critical commands (must not lose)
-
-	auto sensor_qos = rclcpp::QoS(5).best_effort();  // Sensor data (tolerable drops)
-
-	auto vision_pose_qos = rclcpp::QoS(5).reliable();  // Vision poses (RELIABLE but bounded)
-
-	// ======================
-	// Topic Name Definitions 
-	// ======================
-	std::string target_pose_color_topic = _camera_namespace_color.empty() 
-		? "/target_pose" 
-		: _camera_namespace_color + "/target_pose";
-
-	std::string target_pose_bnw_topic = _camera_namespace_bnw.empty()
-		? "/target_pose"
-		: _camera_namespace_bnw + "/target_pose";
-
-	// ======================
-	// Subscribers
-	// ======================
-
-	// Critical Control Signals
-	_inclined_angle_sub = _node.create_subscription<std_msgs::msg::Float32>(
-		"/solar_panel_angle_in_rad", 
-		critical_qos,
-		std::bind(&PrecisionLand::inclined_angle_callback, this, std::placeholders::_1));
-
-	_is_active_cam_color_sub = _node.create_subscription<std_msgs::msg::Bool>(
-		"/is_active_cam_color",
-		critical_qos,
-		std::bind(&PrecisionLand::is_active_cam_color_callback, this, std::placeholders::_1));
-
-	_aruco_id_sub = _node.create_subscription<std_msgs::msg::Int32>(
-		"/aruco_id",
-		critical_qos,
-		std::bind(&PrecisionLand::aruco_id_callback, this, std::placeholders::_1));
-
-	_isloaded_sub = _node.create_subscription<std_msgs::msg::Bool>(
-		"/isloaded",
-		critical_qos,
-		std::bind(&PrecisionLand::isLoadedCallback, this, std::placeholders::_1));
-
-	// Sensor Data
-	_lidar_range_sub = _node.create_subscription<std_msgs::msg::Float32>(
-		"/tfmini/range",
-		sensor_qos,
-		std::bind(&PrecisionLand::lidar_range_callback, this, std::placeholders::_1));
-
-	// Vision Pose Estimates
-	_target_pose_color_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>(
-		target_pose_color_topic,
-		vision_pose_qos,
-		std::bind(&PrecisionLand::targetPoseColorCallback, this, std::placeholders::_1));
-
-	_target_pose_bnw_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>(
-		target_pose_bnw_topic,
-		vision_pose_qos,
-		std::bind(&PrecisionLand::targetPoseBnwCallback, this, std::placeholders::_1));
-
-	// PX4 Status
-	_vehicle_land_detected_sub = _node.create_subscription<px4_msgs::msg::VehicleLandDetected>(
-		"/fmu/out/vehicle_land_detected",
-		px4_control_qos,
-		std::bind(&PrecisionLand::vehicleLandDetectedCallback, this, std::placeholders::_1));
-
-	// ======================
-	// Publishers
-	// ======================
-	_precision_hovering_done_pub = _node.create_publisher<std_msgs::msg::Bool>(
-		"/precision_hovering_done",
-		critical_qos);
-	//  std::string target_pose_color_topic = _camera_namespace_color.empty()
-	//  ? "/target_pose"
-	//  : _camera_namespace_color + "/target_pose";
+	 std::string target_pose_color_topic = _camera_namespace_color.empty()
+	 ? "/target_pose"
+	 : _camera_namespace_color + "/target_pose";
  
-	//  std::string target_pose_bnw_topic = _camera_namespace_bnw.empty()
-	//  ? "/target_pose"
-	//  : _camera_namespace_bnw + "/target_pose";
+	 std::string target_pose_bnw_topic = _camera_namespace_bnw.empty()
+	 ? "/target_pose"
+	 : _camera_namespace_bnw + "/target_pose";
 
+	//  std::string aruco_detected_color_topic = _camera_namespace_color.empty()
+	//  ? "/aruco_detected"
+	//  : _camera_namespace_color + "/aruco_detected";
 
-	//  auto bool_qos = rclcpp::QoS(10).reliable();  // Keep last 10 messages, Reliable
-	//  auto lidar_qos = rclcpp::QoS(10).best_effort();  // Keep last 10 messages, Best Effort
+	//  std::string aruco_detected_bnw_topic = _camera_namespace_bnw.empty()
+	//  ? "/aruco_detected"
+	//  : _camera_namespace_bnw + "/aruco_detected";
+ 
+	 _trajectory_setpoint = std::make_shared<px4_ros2::TrajectorySetpointType>(*this);
+ 
+	 _vehicle_local_position = std::make_shared<px4_ros2::OdometryLocalPosition>(*this);
+ 
+	 _vehicle_attitude = std::make_shared<px4_ros2::OdometryAttitude>(*this);
 
-	// //  std::string aruco_detected_color_topic = _camera_namespace_color.empty()
-	// //  ? "/aruco_detected"
-	// //  : _camera_namespace_color + "/aruco_detected";
+	 _inclined_angle_sub = _node.create_subscription<std_msgs::msg::Float32>(
+		"/solar_panel_angle_in_rad", 10, std::bind(&PrecisionLand::inclined_angle_callback, this, std::placeholders::_1));
+ 
+	 _lidar_range_sub = _node.create_subscription<std_msgs::msg::Float32>(
+		 "/tfmini/range", 10, std::bind(&PrecisionLand::lidar_range_callback, this, std::placeholders::_1));
+ 
+	 _is_active_cam_color_sub = _node.create_subscription<std_msgs::msg::Bool>(
+		 "/is_active_cam_color", 10, std::bind(&PrecisionLand::is_active_cam_color_callback, this, std::placeholders::_1));
+ 
+	 _aruco_id_sub = _node.create_subscription<std_msgs::msg::Int32>(
+		 "/aruco_id", 10, std::bind(&PrecisionLand::aruco_id_callback, this, std::placeholders::_1));
+ 
+	 _isloaded_sub = _node.create_subscription<std_msgs::msg::Bool>("/isloaded", 
+			 10, std::bind(&PrecisionLand::isLoadedCallback, this, std::placeholders::_1));
 
-	// //  std::string aruco_detected_bnw_topic = _camera_namespace_bnw.empty()
-	// //  ? "/aruco_detected"
-	// //  : _camera_namespace_bnw + "/aruco_detected";
- 
-	//  _inclined_angle_sub = _node.create_subscription<std_msgs::msg::Float32>(
-	// 	"/solar_panel_angle_in_rad", bool_qos, std::bind(&PrecisionLand::inclined_angle_callback, this, std::placeholders::_1));
- 
-	//  _lidar_range_sub = _node.create_subscription<std_msgs::msg::Float32>(
-	// 	 "/tfmini/range", bool_qos, std::bind(&PrecisionLand::lidar_range_callback, this, std::placeholders::_1));
- 
-	//  _is_active_cam_color_sub = _node.create_subscription<std_msgs::msg::Bool>(
-	// 	 "/is_active_cam_color", bool_qos, std::bind(&PrecisionLand::is_active_cam_color_callback, this, std::placeholders::_1));
- 
-	//  _aruco_id_sub = _node.create_subscription<std_msgs::msg::Int32>(
-	// 	 "/aruco_id", bool_qos, std::bind(&PrecisionLand::aruco_id_callback, this, std::placeholders::_1));
- 
-	//  _isloaded_sub = _node.create_subscription<std_msgs::msg::Bool>("/isloaded", 
-	// 	bool_qos, std::bind(&PrecisionLand::isLoadedCallback, this, std::placeholders::_1));
-
-	// //  _aruco_detected_color_sub = _node.create_subscription<std_msgs::msg::Bool>(aruco_detected_color_topic, 
-	// // 		 10, std::bind(&PrecisionLand::arucoDetectedColorCallback, this, std::placeholders::_1));
+	//  _aruco_detected_color_sub = _node.create_subscription<std_msgs::msg::Bool>(aruco_detected_color_topic, 
+	// 		 10, std::bind(&PrecisionLand::arucoDetectedColorCallback, this, std::placeholders::_1));
 	
-	// //  _aruco_detected_bnw_sub = _node.create_subscription<std_msgs::msg::Bool>(aruco_detected_bnw_topic, 
-	// // 		 10, std::bind(&PrecisionLand::arucoDetectedBnwCallback, this, std::placeholders::_1));
+	//  _aruco_detected_bnw_sub = _node.create_subscription<std_msgs::msg::Bool>(aruco_detected_bnw_topic, 
+	// 		 10, std::bind(&PrecisionLand::arucoDetectedBnwCallback, this, std::placeholders::_1));
  
-	//  _target_pose_color_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>(target_pose_color_topic,
-	// 	lidar_qos, std::bind(&PrecisionLand::targetPoseColorCallback, this, std::placeholders::_1));
+	 _target_pose_color_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>(target_pose_color_topic,
+		 rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetPoseColorCallback, this, std::placeholders::_1));
  
-	//  _target_pose_bnw_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>(target_pose_bnw_topic,
-	// 	lidar_qos, std::bind(&PrecisionLand::targetPoseBnwCallback, this, std::placeholders::_1));
+	 _target_pose_bnw_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>(target_pose_bnw_topic,
+				rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::targetPoseBnwCallback, this, std::placeholders::_1));
  
-	//  _vehicle_land_detected_sub = _node.create_subscription<px4_msgs::msg::VehicleLandDetected>("/fmu/out/vehicle_land_detected",
-	// 	lidar_qos, std::bind(&PrecisionLand::vehicleLandDetectedCallback, this, std::placeholders::_1));
+	 _vehicle_land_detected_sub = _node.create_subscription<px4_msgs::msg::VehicleLandDetected>("/fmu/out/vehicle_land_detected",
+				rclcpp::QoS(1).best_effort(), std::bind(&PrecisionLand::vehicleLandDetectedCallback, this, std::placeholders::_1));
  
-	//  _precision_hovering_done_pub = _node.create_publisher<std_msgs::msg::Bool>("/precision_hovering_done", bool_qos);
-
-	_trajectory_setpoint = std::make_shared<px4_ros2::TrajectorySetpointType>(*this);
+	 _precision_hovering_done_pub = _node.create_publisher<std_msgs::msg::Bool>("/precision_hovering_done", 10);
  
-	_vehicle_local_position = std::make_shared<px4_ros2::OdometryLocalPosition>(*this);
-
-	_vehicle_attitude = std::make_shared<px4_ros2::OdometryAttitude>(*this);
- 
-	loadParameters();
+	 loadParameters();
 
  }
  
  void PrecisionLand::loadParameters()
  {
+	 _node.declare_parameter<std::string>("camera_namespace_color", std::string("/color_camera"));
+	 _node.declare_parameter<std::string>("camera_namespace_bnw", std::string("/bnw_camera"));
 	 _node.declare_parameter<float>("ascent_vel", -1.0);
 	 _node.declare_parameter<float>("descent_vel", 1.0);
 	 _node.declare_parameter<float>("hold_vel", 1.0);
@@ -194,6 +116,8 @@
 	 _node.declare_parameter<float>("bnw_cam_marker_offset_right", 0.0);
 
 	
+	 _node.get_parameter("camera_namespace_color", _camera_namespace_color);
+	 _node.get_parameter("camera_namespace_bnw", _camera_namespace_bnw);
 	 _node.get_parameter("ascent_vel", _param_ascent_vel);
 	 _node.get_parameter("descent_vel", _param_descent_vel);
 	 _node.get_parameter("hold_vel", _param_hold_vel);
@@ -289,7 +213,7 @@
  
  void PrecisionLand::targetPoseColorCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
  {
-	 if (_search_started && _is_active_cam_color){
+	 if (_is_active_cam_color){
 		 auto tag = ArucoTag {
 			 .position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
 			 .orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
@@ -305,7 +229,7 @@
  
  void PrecisionLand::targetPoseBnwCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
  {
-	 if (_search_started && !(_is_active_cam_color)){
+	 if (!(_is_active_cam_color)){
 		 float delta_y = -_param_bnw_cam_gripper_offset_front*pow(sin(_param_inclined_angle),2) - _param_bnw_cam_marker_offset_front;
 		 
 		 auto tag = ArucoTag {
@@ -358,7 +282,6 @@
  void PrecisionLand::onActivate()
  {
 	 generateSearchWaypoints();
-	 _search_started = true;
 	 switchToState(State::Search);
  }
  
@@ -404,7 +327,6 @@
  
 		 if (positionReached(waypoint_position)) {
 			 _search_waypoint_index++;
-			 
 			 // If we have searched all waypoints, start over
 			 if (_search_waypoint_index >= static_cast<int>(_search_waypoints.size())) {
 				 _search_waypoint_index = 0;

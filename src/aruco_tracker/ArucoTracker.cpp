@@ -14,57 +14,96 @@ ArucoTrackerNode::ArucoTrackerNode()
 	auto dictionary = cv::aruco::getPredefinedDictionary(_param_dictionary);
 
 	_detector = std::make_unique<cv::aruco::ArucoDetector>(dictionary, detectorParams);
-	auto qos = rclcpp::QoS(1).best_effort();
+
+	// Define all QoS profiles at the top for maintainability
+	auto critical_qos = rclcpp::QoS(10).reliable();  // Critical boolean commands Camera images (RELIABLE for vision tasks)
+	auto vision_pose_qos = rclcpp::QoS(5).reliable();  // For target_pose pub
 	
-	std::string image_topic = _camera_namespace.empty() 
-            ? "/camera" 
-            : _camera_namespace + "/image_raw";
-        
-	std::string camera_info_topic = _camera_namespace.empty()
-		? "/camera_info"
-		: _camera_namespace + "/camera_info";
-	
-	std::string target_pose_topic = _camera_namespace.empty()
-	? "/target_pose"
-	: _camera_namespace + "/target_pose";
+	// Topic names (same as your original)
+	std::string image_topic = _camera_namespace.empty() ? "/camera" : _camera_namespace + "/image_raw";
+	std::string camera_info_topic = _camera_namespace.empty() ? "/camera_info" : _camera_namespace + "/camera_info";
+	std::string target_pose_topic = _camera_namespace.empty() ? "/target_pose" : _camera_namespace + "/target_pose";
+	std::string image_proc_topic = _camera_namespace.empty() ? "/image_proc" : _camera_namespace + "/image_proc";
+	std::string aruco_detected_topic = _camera_namespace.empty() ? "/aruco_detected" : _camera_namespace + "/aruco_detected";
 
-	std::string image_proc_topic = _camera_namespace.empty()
-	? "/image_proc"
-	: _camera_namespace + "/image_proc";
-
-	std::string aruco_detected_topic = _camera_namespace.empty()
-	? "/aruco_detected"
-	: _camera_namespace + "/aruco_detected";
-
+	// Subscribers (with matched QoS)
 	_image_sub = create_subscription<sensor_msgs::msg::Image>(
-            image_topic, qos, 
-            std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1)
-        );
+		image_topic, critical_qos,  // Changed to critical_qos (RELIABLE)
+		std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
 
 	_camera_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(
-		camera_info_topic, qos, 
-		std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1)
-	);
+		camera_info_topic, critical_qos,  // Camera info same as images
+		std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
 
-	// _image_sub = this->create_subscription<sensor_msgs::msg::Image>(
-	// 		     "/camera", qos, std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
+	_aruco_id_sub = create_subscription<std_msgs::msg::Int32>(
+		"/aruco_id", critical_qos,
+		std::bind(&ArucoTrackerNode::aruco_id_callback, this, std::placeholders::_1));
 
-	// _camera_info_sub = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-	// 			   "/camera_info", qos, std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
+	_marker_size_sub = create_subscription<std_msgs::msg::Float32>(
+		"/marker_size", critical_qos,
+		std::bind(&ArucoTrackerNode::marker_size_callback, this, std::placeholders::_1));
+
+	// Publishers (with matched QoS)
+	_image_pub = create_publisher<sensor_msgs::msg::Image>(image_proc_topic, critical_qos);
+	_target_pose_pub = create_publisher<geometry_msgs::msg::PoseStamped>(target_pose_topic, vision_pose_qos);  // LIDAR-like data
+	_isloaded_pub = create_publisher<std_msgs::msg::Bool>("/isloaded", critical_qos);
+	_aruco_detected_pub = create_publisher<std_msgs::msg::Bool>(aruco_detected_topic, critical_qos);
+	
+	// auto qos = rclcpp::QoS(1).best_effort();
+	// auto lidar_qos = rclcpp::QoS(10).best_effort();  // Keep last 10 messages, Best Effort
+	// auto critical_qos = rclcpp::QoS(10).reliable();  // Keep last 10 messages, Reliable
+
+
+	
+	// std::string image_topic = _camera_namespace.empty() 
+    //         ? "/camera" 
+    //         : _camera_namespace + "/image_raw";
+        
+	// std::string camera_info_topic = _camera_namespace.empty()
+	// 	? "/camera_info"
+	// 	: _camera_namespace + "/camera_info";
+	
+	// std::string target_pose_topic = _camera_namespace.empty()
+	// ? "/target_pose"
+	// : _camera_namespace + "/target_pose";
+
+	// std::string image_proc_topic = _camera_namespace.empty()
+	// ? "/image_proc"
+	// : _camera_namespace + "/image_proc";
+
+	// std::string aruco_detected_topic = _camera_namespace.empty()
+	// ? "/aruco_detected"
+	// : _camera_namespace + "/aruco_detected";
+
+	// _image_sub = create_subscription<sensor_msgs::msg::Image>(
+    //         image_topic, critical_qos, 
+    //         std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1)
+    //     );
+
+	// _camera_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(
+	// 	camera_info_topic, qos, 
+	// 	std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1)
+	// );
+
+	// // _image_sub = this->create_subscription<sensor_msgs::msg::Image>(
+	// // 		     "/camera", qos, std::bind(&ArucoTrackerNode::image_callback, this, std::placeholders::_1));
+
+	// // _camera_info_sub = this->create_subscription<sensor_msgs::msg::CameraInfo>(
+	// // 			   "/camera_info", qos, std::bind(&ArucoTrackerNode::camera_info_callback, this, std::placeholders::_1));
 	
 	
-	// New subscriptions for dynamic parameter updates
-    _aruco_id_sub = this->create_subscription<std_msgs::msg::Int32>(
-        "/aruco_id", 10, std::bind(&ArucoTrackerNode::aruco_id_callback, this, std::placeholders::_1));
+	// // New subscriptions for dynamic parameter updates
+    // _aruco_id_sub = this->create_subscription<std_msgs::msg::Int32>(
+    //     "/aruco_id", critical_qos, std::bind(&ArucoTrackerNode::aruco_id_callback, this, std::placeholders::_1));
 
-    _marker_size_sub = this->create_subscription<std_msgs::msg::Float32>(
-        "/marker_size", 10, std::bind(&ArucoTrackerNode::marker_size_callback, this, std::placeholders::_1));
+    // _marker_size_sub = this->create_subscription<std_msgs::msg::Float32>(
+    //     "/marker_size", critical_qos, std::bind(&ArucoTrackerNode::marker_size_callback, this, std::placeholders::_1));
 	
-	// Publishers
-	_image_pub = create_publisher<sensor_msgs::msg::Image>(image_proc_topic, qos);
-	_target_pose_pub = create_publisher<geometry_msgs::msg::PoseStamped>(target_pose_topic, qos);
-	_isloaded_pub = create_publisher<std_msgs::msg::Bool>("/isloaded", 10);
-	_aruco_detected_pub = create_publisher<std_msgs::msg::Bool>(aruco_detected_topic, 10);
+	// // Publishers
+	// _image_pub = create_publisher<sensor_msgs::msg::Image>(image_proc_topic, critical_qos);
+	// _target_pose_pub = create_publisher<geometry_msgs::msg::PoseStamped>(target_pose_topic, lidar_qos);
+	// _isloaded_pub = create_publisher<std_msgs::msg::Bool>("/isloaded", critical_qos);
+	// _aruco_detected_pub = create_publisher<std_msgs::msg::Bool>(aruco_detected_topic, critical_qos);
 }
 
 void ArucoTrackerNode::loadParameters()
@@ -135,8 +174,14 @@ void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr m
 				geometry_msgs::msg::PoseStamped pose_msg;
 				pose_msg.header.stamp = msg->header.stamp;
 				pose_msg.header.frame_id = "camera_frame";
-				pose_msg.pose.position.x = tvec[0];
-				pose_msg.pose.position.y = tvec[1];
+				if (_camera_namespace == "/bnw_camera"){
+					pose_msg.pose.position.x = -tvec[0];
+					pose_msg.pose.position.y = -tvec[1];
+				}
+				else{
+					pose_msg.pose.position.x = tvec[0];
+					pose_msg.pose.position.y = tvec[1];
+				}
 				pose_msg.pose.position.z = tvec[2];
 				pose_msg.pose.orientation.x = quat.x;
 				pose_msg.pose.orientation.y = quat.y;

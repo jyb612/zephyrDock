@@ -35,8 +35,8 @@
 	 void lidar_range_callback(const std_msgs::msg::Float32::SharedPtr msg);
 	 void aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg);
 	 void isLoadedCallback(const std_msgs::msg::Bool::SharedPtr msg);
-	 void arucoDetectedColorCallback(const std_msgs::msg::Bool::SharedPtr msg);
-	 void arucoDetectedBnwCallback(const std_msgs::msg::Bool::SharedPtr msg);
+	//  void arucoDetectedColorCallback(const std_msgs::msg::Bool::SharedPtr msg);
+	//  void arucoDetectedBnwCallback(const std_msgs::msg::Bool::SharedPtr msg);
 	 void targetPoseColorCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 	 void targetPoseBnwCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 	 void vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg);
@@ -82,8 +82,8 @@
 	 rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr _lidar_range_sub;
 	 rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr _aruco_id_sub;
 	 rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _isloaded_sub;
-	 rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _aruco_detected_color_sub;
-	 rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _aruco_detected_bnw_sub;
+	//  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _aruco_detected_color_sub;
+	//  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _aruco_detected_bnw_sub;
 	 rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_color_sub;
 	 rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _target_pose_bnw_sub;
 	 rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _is_active_cam_color_sub;
@@ -98,6 +98,7 @@
  
 	 // Data
 	 State _state = State::Search;
+	 bool _search_started = false;
  
 	 ArucoTag _tag;
 	 float _approach_altitude = {};
@@ -153,16 +154,15 @@
 	 float _param_bnw_cam_marker_offset_right = {};
 
 	 float _param_origin_height = {};
-	 
 
-	 std::string _camera_namespace_color;
-	 std::string _camera_namespace_bnw;
+	 std::string _camera_namespace_color = "/color_camera";
+     std::string _camera_namespace_bnw = "/bnw_camera";
 	 std_msgs::msg::Float64 _altitude_msg;
 	 std_msgs::msg::Bool _done_msg;
 	 bool _isloaded = false;
 	 bool _is_active_cam_color = true;
-	 bool _aruco_detected_color = false;
-	 bool _aruco_detected_bnw = false;
+	//  bool _aruco_detected_color = false;
+	//  bool _aruco_detected_bnw = false;
 	 float _above_ground_altitude = {};		// AMSL: Above Mean Sea Level (Origin)
 	 float _above_origin_altitude = {};		// AGL: Above Ground Level (Obstacle / Terrain)
 	 int _aruco_id = 1;
