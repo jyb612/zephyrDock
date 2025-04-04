@@ -28,6 +28,7 @@ setup(
             'zd_processes = zd_px4_comm.zd_processes:main',
             'zd_processes_actual = zd_px4_comm.zd_processes_actual:main',
             'zd_calibration = zd_px4_comm.zd_px4_calibration:main',
+            'zd_logging = zd_px4_comm.zd_logging:main',
         ],
     },
 )
