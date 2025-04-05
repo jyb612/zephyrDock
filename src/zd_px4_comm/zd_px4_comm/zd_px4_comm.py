@@ -183,8 +183,8 @@ class ZDCommNode(Node):
         self.aruco_id = 0
 
         self.search_altitude = -4.0  # Takeoff altitude in NED (8 meters up)
-        self.pre_home_descend_altitude = -3.0
-        self.deploy_altitude = -3.0
+        self.pre_home_descend_altitude = -3.5
+        self.deploy_altitude = -3.5
         self.waypoint_home = [0.0, 0.0, self.search_altitude]
         self.waypoint_solar_panel = [0.0, 0.0, self.search_altitude]
         self.waypoint_solar_panel_distance = 5.0
@@ -638,6 +638,7 @@ class ZDCommNode(Node):
                 self.get_logger().info("Hovering 2 sec, calling next action")
                 if not self.drone_return and self.service_mode == "D":
                     self.publish_active_cam_color(False)
+                    self.publish_aruco_info(3)
             if time.time() - self.hover_start_time > 2.0:  # Hover for 2 seconds
                 self.hover_start_time = None
                 if self.drone_return:
@@ -646,7 +647,7 @@ class ZDCommNode(Node):
                 elif self.service_mode == "D":
                     self.state = "CUSTOM_PRECISION_DESCEND"
                     # self.publish_aruco_info(1)          # SIM
-                    self.publish_aruco_info(3)        # ACTUAL
+                    # self.publish_aruco_info(3)        # ACTUAL
                 elif self.service_mode == "R":
                     self.state = "WAYPOINT_SOLAR_PANEL"
                     self.publish_aruco_info(3)

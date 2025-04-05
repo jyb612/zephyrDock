@@ -160,7 +160,7 @@
 	 std_msgs::msg::Float64 _altitude_msg;
 	 std_msgs::msg::Bool _done_msg;
 	 bool _isloaded = false;
-	 bool _is_active_cam_color = true;
+	 bool _is_active_cam_color = false;
 	//  bool _aruco_detected_color = false;
 	//  bool _aruco_detected_bnw = false;
 	 float _above_ground_altitude = {};		// AMSL: Above Mean Sea Level (Origin)

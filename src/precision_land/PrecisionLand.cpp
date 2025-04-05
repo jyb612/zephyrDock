@@ -298,7 +298,7 @@
 	 
 		 // Save tag position/orientation in NED world frame
 		 _tag = getTagWorld(tag);
-		 // RCLCPP_INFO(_node.get_logger(), "color");
+		 RCLCPP_INFO(_node.get_logger(), "color");
 		 _above_ground_altitude = msg->pose.position.z;
 	 }
  }
@@ -315,6 +315,7 @@
 		 };
 		 // Save tag position/orientation in NED world frame
 		 _tag = getTagWorld(tag);
+		  RCLCPP_INFO(_node.get_logger(), "bnw");
 		 _above_ground_altitude = msg->pose.position.z;
 	 }	
  }

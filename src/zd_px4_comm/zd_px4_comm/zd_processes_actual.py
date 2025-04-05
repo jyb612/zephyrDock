@@ -25,6 +25,12 @@ commands = [
 
     # "ros2 topic echo /fmu/out/vehicle_odometry && exit",
 
+    # "ros2 topic echo /fmu/in/trajectory_setpoint && exit",
+
+    # "ros2 run zd_px4_comm zd_logging",
+
+    # "ros2 topic echo /fmu/out/vehicle_odometry && exit",
+
     # Run camera color plug first
     # "ros2 run v4l2_camera v4l2_camera_node \
     #   --ros-args \
