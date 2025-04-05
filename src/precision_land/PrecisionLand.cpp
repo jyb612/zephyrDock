@@ -107,13 +107,13 @@
 	//  auto bool_qos = rclcpp::QoS(10).reliable();  // Keep last 10 messages, Reliable
 	//  auto lidar_qos = rclcpp::QoS(10).best_effort();  // Keep last 10 messages, Best Effort
 
-	// //  std::string aruco_detected_color_topic = _camera_namespace_color.empty()
-	// //  ? "/aruco_detected"
-	// //  : _camera_namespace_color + "/aruco_detected";
+	 std::string aruco_detected_color_topic = _camera_namespace_color.empty()
+	 ? "/aruco_detected"
+	 : _camera_namespace_color + "/aruco_detected";
 
-	// //  std::string aruco_detected_bnw_topic = _camera_namespace_bnw.empty()
-	// //  ? "/aruco_detected"
-	// //  : _camera_namespace_bnw + "/aruco_detected";
+	 std::string aruco_detected_bnw_topic = _camera_namespace_bnw.empty()
+	 ? "/aruco_detected"
+	 : _camera_namespace_bnw + "/aruco_detected";
  
 	//  _inclined_angle_sub = _node.create_subscription<std_msgs::msg::Float32>(
 	// 	"/solar_panel_angle_in_rad", bool_qos, std::bind(&PrecisionLand::inclined_angle_callback, this, std::placeholders::_1));
@@ -130,11 +130,11 @@
 	//  _isloaded_sub = _node.create_subscription<std_msgs::msg::Bool>("/isloaded", 
 	// 	bool_qos, std::bind(&PrecisionLand::isLoadedCallback, this, std::placeholders::_1));
 
-	// //  _aruco_detected_color_sub = _node.create_subscription<std_msgs::msg::Bool>(aruco_detected_color_topic, 
-	// // 		 10, std::bind(&PrecisionLand::arucoDetectedColorCallback, this, std::placeholders::_1));
+	 _aruco_detected_color_sub = _node.create_subscription<std_msgs::msg::Bool>(aruco_detected_color_topic, 
+		critical_qos, std::bind(&PrecisionLand::arucoDetectedColorCallback, this, std::placeholders::_1));
 	
-	// //  _aruco_detected_bnw_sub = _node.create_subscription<std_msgs::msg::Bool>(aruco_detected_bnw_topic, 
-	// // 		 10, std::bind(&PrecisionLand::arucoDetectedBnwCallback, this, std::placeholders::_1));
+	 _aruco_detected_bnw_sub = _node.create_subscription<std_msgs::msg::Bool>(aruco_detected_bnw_topic, 
+		critical_qos, std::bind(&PrecisionLand::arucoDetectedBnwCallback, this, std::placeholders::_1));
  
 	//  _target_pose_color_sub = _node.create_subscription<geometry_msgs::msg::PoseStamped>(target_pose_color_topic,
 	// 	lidar_qos, std::bind(&PrecisionLand::targetPoseColorCallback, this, std::placeholders::_1));
@@ -266,23 +266,27 @@
 		 _isloaded = false;
  }
 
-//  void PrecisionLand::arucoDetectedColorCallback(const std_msgs::msg::Bool::SharedPtr msg)	// unused?
-//  {
-// 	 // Process the received boolean message
-// 	 if (msg->data)
-// 		 _aruco_detected_color = true;
-// 	 else
-// 	 	 _aruco_detected_color = false;
-//  }
+ void PrecisionLand::arucoDetectedColorCallback(const std_msgs::msg::Bool::SharedPtr msg)	// unused?
+ {
+	 // Process the received boolean message
+	 if (msg->data){
+		 RCLCPP_INFO(_node.get_logger(), "color aruco");
+		 _aruco_detected_color = true;
+	 }
+	 else
+	 	 _aruco_detected_color = false;
+ }
 
-//  void PrecisionLand::arucoDetectedBnwCallback(const std_msgs::msg::Bool::SharedPtr msg)	// unused?
-//  {
-// 	 // Process the received boolean message
-// 	 if (msg->data)
-// 	 	 _aruco_detected_bnw = true;
-// 	 else
-// 	 	 _aruco_detected_bnw = false;
-//  }
+ void PrecisionLand::arucoDetectedBnwCallback(const std_msgs::msg::Bool::SharedPtr msg)	// unused?
+ {
+	 // Process the received boolean message
+	 if (msg->data){
+		 RCLCPP_INFO(_node.get_logger(), "bnw aruco");
+		 _aruco_detected_bnw = true;
+	 }
+	 else
+	 	 _aruco_detected_bnw = false;
+ }
  
  void PrecisionLand::vehicleLandDetectedCallback(const px4_msgs::msg::VehicleLandDetected::SharedPtr msg)
  {
@@ -292,6 +296,7 @@
  void PrecisionLand::targetPoseColorCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
  {
 	 if (_search_started && _is_active_cam_color){
+		 RCLCPP_INFO(_node.get_logger(), "color");
 		 auto tag = ArucoTag {
 			 .position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
 			 .orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
@@ -300,7 +305,6 @@
 	 
 		 // Save tag position/orientation in NED world frame
 		 _tag = getTagWorld(tag);
-		 RCLCPP_INFO(_node.get_logger(), "color");
 		 _above_ground_altitude = msg->pose.position.z;
 	 }
  }
@@ -308,6 +312,7 @@
  void PrecisionLand::targetPoseBnwCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
  {
 	 if (_search_started && !(_is_active_cam_color)){
+		 RCLCPP_INFO(_node.get_logger(), "bnw");
 		 float delta_y = -_param_bnw_cam_gripper_offset_front*pow(sin(_param_inclined_angle),2) - _param_bnw_cam_marker_offset_front;
 		 
 		 auto tag = ArucoTag {
@@ -317,7 +322,6 @@
 		 };
 		 // Save tag position/orientation in NED world frame
 		 _tag = getTagWorld(tag);
-		  RCLCPP_INFO(_node.get_logger(), "bnw");
 		 _above_ground_altitude = msg->pose.position.z;
 	 }	
  }
@@ -396,16 +400,16 @@
 	 }
 	 
 	 case State::Search: {
-		 if (!std::isnan(_tag.position.x())) {
-			_approach_altitude = _vehicle_local_position->positionNed().z();
-			switchToState(State::Approach);
-			break;
-		 }
-		//  if (_aruco_detected_color || _aruco_detected_bnw) {
-		// 	 _approach_altitude = _vehicle_local_position->positionNed().z();
-		// 	 switchToState(State::Approach);
-		// 	 break;
+		//  if (!std::isnan(_tag.position.x())) {
+		// 	_approach_altitude = _vehicle_local_position->positionNed().z();
+		// 	switchToState(State::Approach);
+		// 	break;
 		//  }
+		 if (_aruco_detected_color || _aruco_detected_bnw) {
+			 _approach_altitude = _vehicle_local_position->positionNed().z();
+			 switchToState(State::Approach);
+			 break;
+		 }
  
 		 auto waypoint_position = _search_waypoints[_search_waypoint_index];
  
