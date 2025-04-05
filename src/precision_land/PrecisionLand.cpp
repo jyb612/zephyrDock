@@ -253,6 +253,8 @@
  void PrecisionLand::aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg)
  {
 	 _aruco_id = msg->data;
+	 RCLCPP_INFO(_node.get_logger(), "%d", int(_aruco_id));
+
  }
  
  void PrecisionLand::isLoadedCallback(const std_msgs::msg::Bool::SharedPtr msg)	// unused?
@@ -322,10 +324,16 @@
  
  void PrecisionLand::is_active_cam_color_callback(const std_msgs::msg::Bool::SharedPtr msg)
  {
-	 if (msg->data)
-		 _is_active_cam_color = true;
-	 else
-		 _is_active_cam_color = false;
+	 if (msg->data){
+		RCLCPP_INFO(_node.get_logger(), "color cam selected");
+		_is_active_cam_color = true;
+
+	 }
+	 else{
+		RCLCPP_INFO(_node.get_logger(), "bnw cam selected");
+		_is_active_cam_color = false;
+	 }
+	 
  }
  
  PrecisionLand::ArucoTag PrecisionLand::getTagWorld(const ArucoTag& tag)
@@ -454,7 +462,7 @@
 		 else{
 			 if (_aruco_id == 1){
 				_target_z = _param_loaded_land_z;
-				RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _target_z, _param_loaded_land_z, _above_ground_altitude);
+				// RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _target_z, _param_loaded_land_z, _above_ground_altitude);
 				if (_is_active_cam_color)
 					_param_inclined_angle = 0.0;
 			 }

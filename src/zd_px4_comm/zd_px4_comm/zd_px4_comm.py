@@ -520,7 +520,6 @@ class ZDCommNode(Node):
         """Main loop that implements the state machine."""
         if self.state == "SERVICE_SELECT":
             if not self.loop_once:
-                self.publish_active_cam_color(True)
                 self.hover_start_time = time.time()
                 self.loop_once = True
             if time.time() - self.hover_start_time >= 1.5:
