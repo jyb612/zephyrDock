@@ -270,7 +270,7 @@
  {
 	 // Process the received boolean message
 	 if (msg->data){
-		 RCLCPP_INFO(_node.get_logger(), "color aruco");
+		//  RCLCPP_INFO(_node.get_logger(), "color aruco");
 		 _aruco_detected_color = true;
 	 }
 	 else
@@ -281,7 +281,7 @@
  {
 	 // Process the received boolean message
 	 if (msg->data){
-		 RCLCPP_INFO(_node.get_logger(), "bnw aruco");
+		//  RCLCPP_INFO(_node.get_logger(), "bnw aruco");
 		 _aruco_detected_bnw = true;
 	 }
 	 else
@@ -296,7 +296,7 @@
  void PrecisionLand::targetPoseColorCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
  {
 	 if (_search_started && _is_active_cam_color){
-		 RCLCPP_INFO(_node.get_logger(), "color");
+		//  RCLCPP_INFO(_node.get_logger(), "color");
 		 auto tag = ArucoTag {
 			 .position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z),
 			 .orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
@@ -306,13 +306,14 @@
 		 // Save tag position/orientation in NED world frame
 		 _tag = getTagWorld(tag);
 		 _above_ground_altitude = msg->pose.position.z;
+		 RCLCPP_INFO(_node.get_logger(), "color");
 	 }
  }
  
  void PrecisionLand::targetPoseBnwCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
  {
 	 if (_search_started && !(_is_active_cam_color)){
-		 RCLCPP_INFO(_node.get_logger(), "bnw");
+		//  RCLCPP_INFO(_node.get_logger(), "bnw");
 		 float delta_y = -_param_bnw_cam_gripper_offset_front*pow(sin(_param_inclined_angle),2) - _param_bnw_cam_marker_offset_front;
 		 
 		 auto tag = ArucoTag {
@@ -323,7 +324,7 @@
 		 // Save tag position/orientation in NED world frame
 		 _tag = getTagWorld(tag);
 		 _above_ground_altitude = msg->pose.position.z;
-	 }	
+	 }
  }
  
  void PrecisionLand::is_active_cam_color_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -407,7 +408,14 @@
 		//  }
 		 if (_aruco_detected_color || _aruco_detected_bnw) {
 			 _approach_altitude = _vehicle_local_position->positionNed().z();
+			 RCLCPP_INFO(_node.get_logger(), "%.2f", float(_approach_altitude));
 			 switchToState(State::Approach);
+			 if (_tag.valid())
+			 	RCLCPP_INFO(_node.get_logger(), "valid");
+			 else
+			 	RCLCPP_INFO(_node.get_logger(), "not valid");
+
+
 			 break;
 		 }
  
