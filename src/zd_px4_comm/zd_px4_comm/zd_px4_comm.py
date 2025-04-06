@@ -8,9 +8,9 @@ import time
 from std_msgs.msg import Int32, Bool, Float32, Float32MultiArray  # For servo command
 import math
 import numpy as np
-import csv
-from datetime import datetime
-import os
+# import csv
+# from datetime import datetime
+# import os
 
 MAIN_VEHICLE_MODE_OFFBOARD = 6.0         # Offboard param 1 = 1.0
 
@@ -20,9 +20,9 @@ SUB_VEHICLE_MODE_LOITER = 3.0           # Loiter (Hold) param3          param1 =
 SUB_VEHICLE_MODE_CUSTOM_MODE = 11.0     # External mode 1   param3      param1 = 1.0 param2 = 4.0
 SUB_VEHICLE_MODE_LAND = 6.0             # LAND   param3                 param1 = 1.0 param2 = 4.0
 
-RELEASE = 1024
+RELEASE = 3072
 GRIP = 2048
-GRIP_STRONG = 2816
+GRIP_STRONG = 1024
 
 
 class ZDCommNode(Node):
@@ -220,15 +220,15 @@ class ZDCommNode(Node):
         # Timer to control the state machine
         self.timer = self.create_timer(0.1, self.timer_callback)  # 2Hz
 
-        # Create logs directory if needed
-        os.makedirs('logs', exist_ok=True)
+        # # Create logs directory if needed
+        # os.makedirs('logs', exist_ok=True)
         
-        # Open CSV file with additional lidar column
-        log_filename = f"logs/odometry_lidar_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-        self.odom_log = open(log_filename, 'w')
-        self.odom_writer = csv.writer(self.odom_log)
-        self.odom_writer.writerow(['timestamp', 'x', 'y', 'z', 'lidar_altitude'])
-        self.get_logger().info(f"Logging data to: {os.path.abspath(log_filename)}")
+        # # Open CSV file with additional lidar column
+        # log_filename = f"logs/odometry_lidar_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        # self.odom_log = open(log_filename, 'w')
+        # self.odom_writer = csv.writer(self.odom_log)
+        # self.odom_writer.writerow(['timestamp', 'x', 'y', 'z', 'lidar_altitude'])
+        # self.get_logger().info(f"Logging data to: {os.path.abspath(log_filename)}")
 
     def lidar_range_callback(self, msg):
         self.above_ground_altitude = -float(msg.data)   # negative sign for FRD NED coordinate system
@@ -264,15 +264,15 @@ class ZDCommNode(Node):
         # self.get_logger().info(f"(X={msg.position[0]}, Y={msg.position[1]}, Z={msg.position[2]})")
 
         # Simple logging - just position and timestamp
-        self.odom_writer.writerow([
-            time.time(),
-            self.current_position[0],
-            self.current_position[1],
-            self.current_position[2],
-            self.above_ground_altitude
-        ])
+        # self.odom_writer.writerow([
+        #     time.time(),
+        #     self.current_position[0],
+        #     self.current_position[1],
+        #     self.current_position[2],
+        #     self.above_ground_altitude
+        # ])
 
-        self.odom_log.flush()  # Ensure data is written immediately
+        # self.odom_log.flush()  # Ensure data is written immediately
         
         # Extract quaternion
         q = [msg.q[0], msg.q[1], msg.q[2], msg.q[3]]
@@ -525,6 +525,10 @@ class ZDCommNode(Node):
             if time.time() - self.hover_start_time >= 1.5:
                 # if (True):                      # SIM
                 if (self.pre_flight_check()): # ACTUAL
+                    servo_msg = Int32()
+                    servo_msg.data = RELEASE
+                    self.servo_command_publisher.publish(servo_msg)
+                    
                     self.origin_position[0] = round(self.current_position[0], 1)
                     self.origin_position[1] = round(self.current_position[1], 1)
 
@@ -568,7 +572,7 @@ class ZDCommNode(Node):
                 self.hover_start_time = time.time()
                 self.samples = []
                 self.get_logger().info("Takeoff done! Collecting data...")
-                self.anchor_position[3] = self.current_euler[2]
+                self.anchor_position[3] = self.current_euler[2] + math.radians(90)  # right turn 90 deg (cw) facing solar panel
 
 
         elif self.state == "ANCHORING":
@@ -694,7 +698,7 @@ class ZDCommNode(Node):
                 self.state = "SERVO_ACTION"
                 self.aruco_descend = True
                 self.loop_once = False
-
+        
 
         elif self.state == "SERVO_ACTION":
             # Publish servo command
@@ -746,6 +750,10 @@ class ZDCommNode(Node):
 
 
         elif self.state == "ASCEND":
+            if not self.loop_once:
+                if self.drone_return and self.waypoint == "HOME":
+                    self.anchor_position[3] = self.anchor_position - math.radians(90)
+                self.loop_once = True
             self.publish_offboard_control_mode()
             if self.drone_return and self.waypoint == "HOME":
                 takeoff_altitude = self.pre_home_descend_altitude
@@ -776,11 +784,13 @@ class ZDCommNode(Node):
                 if grip_check:
                     if self.waypoint == "SOLAR PANEL": # far from home
                         self.state = "WAYPOINT_HOME"
+                        self.anchor_position[3] = self.anchor_position[3] - math.radians(90)
                     elif self.drone_return:
                         self.state = "CUSTOM_PRECISION_DESCEND"
                         self.publish_aruco_info(0)
                     elif self.waypoint == "HOME":
                         self.state = "WAYPOINT_SOLAR_PANEL"
+                    self.loop_once = False
                 # self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 4.0, 3.0)  # Switch to Loiter (Hold) mode
                 # time.sleep(5)
         
@@ -927,11 +937,13 @@ class ZDCommNode(Node):
                         
         elif self.state == "COMPLETE":
             if abs(self.current_position[2] - self.origin_position[2]) <= 0.2:
-                if self.loop_once:
+                if not self.loop_once:
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LAND)  # Land
+                    self.loop_once = True
                 if not self.armed:
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LOITER)  # Loiter
                     self.get_logger().warn("Exiting Node...")
+                    self.loop_once = False
                     self.running = False
             # Do nothing, mission is complete
             pass
@@ -949,7 +961,7 @@ def main(args=None):
         node.get_logger().info("Keyboard Interrupt detected. Shutting down...")
     finally:
         node.destroy_node()
-        node.odom_log.close()  # Ensure file is properly closed
+        # node.odom_log.close()  # Ensure file is properly closed
         # Check if ROS is still running before shutting down
         if rclpy.ok():
             rclpy.shutdown()

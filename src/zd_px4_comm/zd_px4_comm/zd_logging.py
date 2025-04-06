@@ -213,7 +213,7 @@ class ZDLoggingNode(Node):
     
     def trajectory_setpoint_callback(self, msg):
         """Callback to update the current position."""
-        self.get_logger().info("trajectory setpoint yes")
+        # self.get_logger().info("trajectory setpoint yes")
 
         self.trajectory_setpoint = [
             float(msg.position[0]),  # X in NED
