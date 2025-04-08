@@ -601,7 +601,6 @@ class ZDCommNode(Node):
             if not self.loop_once:
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)
                 self.publish_offboard_control_mode()
-                self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=self.current_position[2], yaw=self.anchor_position[3])
                 self.loop_once = True
                 if self.service_mode == 'D':
                     takeoff_altitude = self.pre_home_descend_altitude
@@ -610,7 +609,8 @@ class ZDCommNode(Node):
                 z = self.origin_position[2] + takeoff_altitude
 
                 self.get_logger().info(f"Current odometry z: {self.current_position[2]} Target odometery z: {z}m")
-            
+                self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=z, yaw=self.anchor_position[3])
+
             if self.service_mode == 'D':
                 takeoff_altitude = self.pre_home_descend_altitude
             else:
@@ -629,8 +629,8 @@ class ZDCommNode(Node):
             if self.stable_check(isgood):
                 self.state = "HOVER"
                 self.loop_once = False
-                if self.service_mode == "R":
-                    self.anchor_position[3] = self.anchor_position[3] + math.radians(90)
+                # if self.service_mode == "R":
+                #     self.anchor_position[3] = self.anchor_position[3] + math.radians(90)
 
 
         elif self.state == "HOVER":
@@ -663,7 +663,9 @@ class ZDCommNode(Node):
 
 
         elif self.state == "PRE_HOME_DESCEND":
-            descend_rate = 0.2
+            # descend_rate = 0.2
+            if (self.current_mode != 14):
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
             if not self.loop_once:
                 self.anchor_position[0] = self.origin_position[0]
                 self.anchor_position[1] = self.origin_position[1]
@@ -678,10 +680,12 @@ class ZDCommNode(Node):
                 self.state = "CUSTOM_PRECISION_DESCEND"
                 self.loop_once = False
             self.publish_offboard_control_mode()
-            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.pre_home_descend_altitude, yaw=self.anchor_position[3])
+            self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=z, yaw=self.anchor_position[3])
 
 
         elif self.state == "CUSTOM_PRECISION_DESCEND":  # if id=0 land, else hover
+            if (self.current_mode != 23):
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_CUSTOM_MODE)  # Switch to custom precision land (hover) mode
             if not self.loop_once:
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_CUSTOM_MODE)  # Switch to custom precision land (hover) mode
                 self.custom_mode_done = False
@@ -784,7 +788,8 @@ class ZDCommNode(Node):
                 if grip_check:
                     if self.waypoint == "SOLAR PANEL": # far from home
                         self.state = "WAYPOINT_HOME"
-                        self.anchor_position[3] = self.anchor_position[3] - math.radians(90)
+                        if not self.gripper_gripped:
+                            self.anchor_position[3] = self.anchor_position[3] - math.radians(90)
                     elif self.drone_return:
                         self.state = "CUSTOM_PRECISION_DESCEND"
                         self.publish_aruco_info(0)
@@ -884,14 +889,14 @@ class ZDCommNode(Node):
             elif altitude_difference > 1.5:  # Moderately higher
                 speed = 1.5  
             elif altitude_difference > 0.5:  # Slightly higher
-                speed = 1.0  
-            elif altitude_difference > 0.2:  # Close to target
+                speed = 1.3  
+            elif altitude_difference > 0.1:  # Close to target
                 speed = 0.5  
-            elif altitude_difference < -0.2:  # If too low, ascend
-                speed = 1.0  
+            elif altitude_difference < -0.1:  # If too low, ascend
+                speed = 2.0  
                 self.get_logger().info("Too low, ascending slightly...")
             else:  # At the correct altitude
-                speed = 0.0
+                speed = 0.3
                 self.get_logger().info("Holding at deployment altitude.")
 
             # Compute target z to maintain gradual descent and corrections
@@ -936,14 +941,11 @@ class ZDCommNode(Node):
                         
                         
         elif self.state == "COMPLETE":
-            if abs(self.current_position[2] - self.origin_position[2]) <= 0.2:
-                if not self.loop_once:
-                    self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LAND)  # Land
-                    self.loop_once = True
+            if abs(self.current_position[2] - self.origin_position[2]) <= 0.5:
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LAND)  # Land
                 if not self.armed:
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LOITER)  # Loiter
                     self.get_logger().warn("Exiting Node...")
-                    self.loop_once = False
                     self.running = False
             # Do nothing, mission is complete
             pass
