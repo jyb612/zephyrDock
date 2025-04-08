@@ -540,6 +540,8 @@ class ZDCommNode(Node):
                     self.waypoint_solar_panel[0] = x
                     self.waypoint_solar_panel[1] = y
 
+                    self.get_logger().info(f"solar panel=({self.waypoint_solar_panel[0]}, {self.waypoint_solar_panel[1]}, {self.waypoint_solar_panel[2]})")
+
                     # # define waypoint to home
                     self.waypoint_home[0] = self.origin_position[0]
                     self.waypoint_home[1] = self.origin_position[1]
@@ -558,7 +560,7 @@ class ZDCommNode(Node):
 
         elif self.state == "ARMING":
             if not self.loop_once:
-                if (self.current_mode != 4):
+                if (self.current_mode != 4 and self.current_mode != 18):
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 4.0, 3.0)
                 self.loop_once = True
             if not self.armed:              # ensure arm and take off (repeatedly send signal)
@@ -598,6 +600,8 @@ class ZDCommNode(Node):
 
 
         elif self.state == "OFFBOARDTAKEOFF":
+            if not self.current_mode == 14:
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)
             if not self.loop_once:
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)
                 self.publish_offboard_control_mode()
@@ -664,7 +668,7 @@ class ZDCommNode(Node):
 
         elif self.state == "PRE_HOME_DESCEND":
             # descend_rate = 0.2
-            if (self.current_mode != 14):
+            if (self.current_mode != 14 and self.current_mode != 18):
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
             if not self.loop_once:
                 self.anchor_position[0] = self.origin_position[0]
@@ -684,10 +688,10 @@ class ZDCommNode(Node):
 
 
         elif self.state == "CUSTOM_PRECISION_DESCEND":  # if id=0 land, else hover
-            if (self.current_mode != 23):
+            if (self.current_mode != 23 and self.current_mode != 18):
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_CUSTOM_MODE)  # Switch to custom precision land (hover) mode
             if not self.loop_once:
-                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_CUSTOM_MODE)  # Switch to custom precision land (hover) mode
+                # self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_CUSTOM_MODE)  # Switch to custom precision land (hover) mode
                 self.custom_mode_done = False
                 self.loop_once = True
                 self.get_logger().info("Initiate precision landing (align to aruco marker).")

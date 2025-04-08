@@ -425,7 +425,7 @@
 		//  }
 		 if (_aruco_detected_color || _aruco_detected_bnw) {
 			 _approach_altitude = _vehicle_local_position->positionNed().z();
-			 RCLCPP_INFO(_node.get_logger(), "%.2f", float(_approach_altitude));
+			 RCLCPP_INFO(_node.get_logger(), "Approach altitude: %.2f", float(_approach_altitude));
 			 switchToState(State::Approach);
 			 if (_tag.valid())
 			 	RCLCPP_INFO(_node.get_logger(), "valid");
