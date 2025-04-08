@@ -154,6 +154,8 @@
 	_vehicle_attitude = std::make_shared<px4_ros2::OdometryAttitude>(*this);
  
 	loadParameters();
+	
+	_start_time = _node.now();
 
 	auto t = std::time(nullptr);
 	auto tm = *std::localtime(&t);
@@ -329,7 +331,7 @@
 	 if (_search_started && !(_is_active_cam_color)){
 		//  RCLCPP_INFO(_node.get_logger(), "bnw");
 		 float delta_y = -_param_bnw_cam_gripper_offset_front*pow(sin(_param_inclined_angle),2) - _param_bnw_cam_marker_offset_front;
-		 
+		 delta_y = 0;
 		 auto tag = ArucoTag {
 			 .position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y+delta_y, msg->pose.position.z),
 			 .orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
@@ -428,11 +430,9 @@
 			 RCLCPP_INFO(_node.get_logger(), "Approach altitude: %.2f", float(_approach_altitude));
 			 switchToState(State::Approach);
 			 if (_tag.valid())
-			 	RCLCPP_INFO(_node.get_logger(), "valid");
+				RCLCPP_INFO(_node.get_logger(), "valid, x = %.2f, y = %.2f", float(_tag.position.x()), float(_tag.position.y()));
 			 else
 			 	RCLCPP_INFO(_node.get_logger(), "not valid");
-
-
 			 break;
 		 }
  

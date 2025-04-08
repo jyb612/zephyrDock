@@ -174,14 +174,8 @@ void ArucoTrackerNode::image_callback(const sensor_msgs::msg::Image::SharedPtr m
 				geometry_msgs::msg::PoseStamped pose_msg;
 				pose_msg.header.stamp = msg->header.stamp;
 				pose_msg.header.frame_id = "camera_frame";
-				if (_camera_namespace == "/bnw_camera"){
-					pose_msg.pose.position.x = -tvec[0];
-					pose_msg.pose.position.y = -tvec[1];
-				}
-				else{
-					pose_msg.pose.position.x = tvec[0];
-					pose_msg.pose.position.y = tvec[1];
-				}
+				pose_msg.pose.position.x = tvec[0];
+				pose_msg.pose.position.y = tvec[1];
 				pose_msg.pose.position.z = tvec[2];
 				pose_msg.pose.orientation.x = quat.x;
 				pose_msg.pose.orientation.y = quat.y;
