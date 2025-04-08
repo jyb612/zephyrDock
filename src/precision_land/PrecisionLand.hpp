@@ -171,4 +171,8 @@
 	 
 	 std::ofstream _csv_log_file;
 	 rclcpp::Time _start_time;
+
+	 Eigen::Vector3f _approach_position;
+	 bool _approach_position_set = false;
+
  };

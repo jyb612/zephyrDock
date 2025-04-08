@@ -428,9 +428,10 @@
 		 if (_aruco_detected_color || _aruco_detected_bnw) {
 			 _approach_altitude = _vehicle_local_position->positionNed().z();
 			 RCLCPP_INFO(_node.get_logger(), "Approach altitude: %.2f", float(_approach_altitude));
-			 switchToState(State::Approach);
-			 if (_tag.valid())
+			 if (_tag.valid()){
 				RCLCPP_INFO(_node.get_logger(), "valid, x = %.2f, y = %.2f", float(_tag.position.x()), float(_tag.position.y()));
+				switchToState(State::Approach);
+			 }
 			 else
 			 	RCLCPP_INFO(_node.get_logger(), "not valid");
 			 break;
@@ -459,14 +460,20 @@
 			 switchToState(State::Idle);
 			 return;
 		 }
+
+		 // Set target position once
+		 if (!_approach_position_set) {
+			_approach_position = Eigen::Vector3f(_tag.position.x(), _tag.position.y(), _approach_altitude);
+			_approach_position_set = true;
+			RCLCPP_INFO(_node.get_logger(), "Approach position set to (%.2f, %.2f, %.2f)",
+						_approach_position.x(), _approach_position.y(), _approach_position.z());
+		}
  
-		 // Approach using position setpoints
-		 auto target_position = Eigen::Vector3f(_tag.position.x(), _tag.position.y(), _approach_altitude);
- 
-		 _trajectory_setpoint->updatePosition(target_position);
+		 _trajectory_setpoint->updatePosition(_approach_position);
  
 		 if (positionReached(target_position)) {
 			 switchToState(State::Descend);
+			 _approach_position_set = false;  // Reset for next time we enter Approach
 		 }
  
 		 break;
