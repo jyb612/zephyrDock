@@ -25,6 +25,7 @@
  #include <std_msgs/msg/float32.hpp>
  #include <std_msgs/msg/float64.hpp>
  #include <std_msgs/msg/bool.hpp>
+ #include <fstream>
  
  class PrecisionLand : public px4_ros2::ModeBase
  {
@@ -168,4 +169,6 @@
 	 int _aruco_id = 1;
 	 float _target_z = {};
 	 
+	 std::ofstream _csv_log_file;
+	 rclcpp::Time _start_time;
  };
