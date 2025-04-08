@@ -155,6 +155,20 @@
  
 	loadParameters();
 
+	auto t = std::time(nullptr);
+	auto tm = *std::localtime(&t);
+	std::ostringstream oss;
+	oss << "logs/pid_log_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".csv";
+	std::string log_filename = oss.str();
+
+	_csv_log_file.open(log_filename, std::ios::out | std::ios::trunc);
+	if (_csv_log_file.is_open()) {
+		_csv_log_file << "timestamp,error_x,error_y,integral_x,integral_y,vx,vy,"
+		              << "drone_x,drone_y,tag_x,tag_y\n";
+	} else {
+		RCLCPP_WARN(_node.get_logger(), "Failed to open CSV log file: %s", log_filename.c_str());
+	}
+
  }
  
  void PrecisionLand::loadParameters()
@@ -378,6 +392,9 @@
  
  void PrecisionLand::onDeactivate()
  {
+	if (_csv_log_file.is_open()) {
+		_csv_log_file.close();
+	 }
 	 // No-op
  }
  
@@ -585,6 +602,9 @@
  
 	 case State::Finished: {
 		 ModeBase::completed(px4_ros2::Result::Success);
+		 if (_csv_log_file.is_open()) {
+			_csv_log_file.close();
+		 }
 		 break;
 	 }
 	 } // end switch/case
@@ -618,6 +638,18 @@
 	 // 0.1m/s min vel and 3m/s max vel
 	 vx = std::clamp(vx, -1.f * _param_max_velocity, _param_max_velocity);
 	 vy = std::clamp(vy, -1.f * _param_max_velocity, _param_max_velocity);
+
+	 if (_csv_log_file.is_open()) {
+		// In your logging:
+		rclcpp::Duration elapsed = _node.now() - _start_time;
+		_csv_log_file << elapsed.seconds() << ","  // Seconds since start
+					  << delta_pos_x << "," << delta_pos_y << ","
+					  << _vel_x_integral << "," << _vel_y_integral << ","
+					  << vx << "," << vy << ","
+					  << _vehicle_local_position->positionNed().x() << ","
+					  << _vehicle_local_position->positionNed().y() << ","
+					  << _tag.position.x() << "," << _tag.position.y() << "\n";
+	}
  
 	 return Eigen::Vector2f(vx, vy);
  }
