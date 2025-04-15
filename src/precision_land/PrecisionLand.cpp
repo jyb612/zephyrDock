@@ -503,8 +503,8 @@
 			 }
 		 }
 			 
-		 
-		 if (_aruco_id == 0){
+		//  if (_aruco_id == 0){
+		 if (_aruco_id == 1){
 			 Eigen::Vector2f vel = calculateVelocitySetpointXY();
 			 _trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 			 _param_inclined_angle = 0.0;

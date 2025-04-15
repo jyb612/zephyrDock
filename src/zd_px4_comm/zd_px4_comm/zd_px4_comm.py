@@ -651,7 +651,8 @@ class ZDCommNode(Node):
                 self.hover_start_time = None
                 if self.drone_return:
                     self.state = "PRE_HOME_DESCEND"
-                    self.publish_aruco_info(0)
+                    # self.publish_aruco_info(0)
+                    self.publish_aruco_info(1)
                 elif self.service_mode == "D":
                     self.state = "CUSTOM_PRECISION_DESCEND"
                     # self.publish_aruco_info(1)          # SIM
@@ -798,7 +799,8 @@ class ZDCommNode(Node):
                             self.anchor_position[3] = self.anchor_position[3] - math.radians(90)
                     elif self.drone_return:
                         self.state = "CUSTOM_PRECISION_DESCEND"
-                        self.publish_aruco_info(0)
+                        # self.publish_aruco_info(0)
+                        self.publish_aruco_info(1)
                     elif self.waypoint == "HOME":
                         self.state = "WAYPOINT_SOLAR_PANEL"
                     self.loop_once = False
@@ -890,7 +892,7 @@ class ZDCommNode(Node):
 
             altitude_difference = self.deploy_altitude - self.above_ground_altitude
             speed = 0.5  # Default slow descent
-
+            isgood = False
             if altitude_difference > 4.0:  # Much higher than target
                 speed = 2.0/2  # Faster descent, but not too fast
             elif altitude_difference > 1.5:  # Moderately higher
@@ -904,6 +906,7 @@ class ZDCommNode(Node):
                 self.get_logger().info("Too low, ascending slightly...")
             else:  # At the correct altitude
                 speed = 0.3/2
+                isgood = True
                 self.get_logger().info("Holding at deployment altitude.")
 
             # Compute target z to maintain gradual descent and corrections
@@ -921,7 +924,6 @@ class ZDCommNode(Node):
             # self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.origin_position[2] - 6.0, yaw = self.anchor_position[3])   ## ATTENTION
             # instant altitude + descend rate -> more positive -> more low altitude
             # self.get_logger().info(f"Current altitude NED: {self.current_position[2]}")
-            isgood = True if speed == 0 else False
                 
             if self.stable_check(isgood):
                 self.state = "SERVO_ACTION"
