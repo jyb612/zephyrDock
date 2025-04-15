@@ -23,9 +23,9 @@ commands = [
 
     "ros2 run sensor_interface lidar && exit",
 
-    # "ros2 topic echo /fmu/out/vehicle_odometry && exit",
+    "ros2 topic echo /fmu/out/vehicle_odometry && exit",
 
-    # "ros2 topic echo /fmu/in/trajectory_setpoint && exit",
+    "ros2 topic echo /fmu/in/trajectory_setpoint && exit",
 
     # "ros2 run zd_px4_comm zd_logging",
 

@@ -191,7 +191,7 @@ class ZDCommNode(Node):
         self.angular_velocity_threshold = 0.01  # Threshold for angular velocity (radians per second)
         self.time_threshold = 3.0
         self.hori_grip_height = None
-        self.lidar_cam_offset_front = 0.15      ## ATTENTION
+        self.lidar_gripper_offset_front = -0.15      ## ATTENTION
         self.z_offset = -0.5
 
         self.samples = []
@@ -541,13 +541,14 @@ class ZDCommNode(Node):
                     self.waypoint_solar_panel[1] = y
 
                     self.get_logger().info(f"solar panel=({self.waypoint_solar_panel[0]}, {self.waypoint_solar_panel[1]}, {self.waypoint_solar_panel[2]})")
+                    self.anchor_position[3] = self.current_euler[2]
 
                     # # define waypoint to home
                     self.waypoint_home[0] = self.origin_position[0]
                     self.waypoint_home[1] = self.origin_position[1]
 
                     self.lidar_ground_level = self.above_ground_altitude
-                    self.get_logger().info(f"\ncurrent odometry z = {self.current_position[2]}\norigin above aground altitude = {self.lidar_ground_level}")
+                    self.get_logger().info(f"\ncurrent yaw = {math.degrees(self.anchor_position[3])}\ncurrent odometry z = {self.current_position[2]}\norigin above aground altitude = {self.lidar_ground_level}")
                     self.service_mode = input("Input 'd' to deploy, 'r' to return robot: ").upper()
 
                     if self.service_mode == 'D' or self.service_mode == 'R':
@@ -574,7 +575,7 @@ class ZDCommNode(Node):
                 self.hover_start_time = time.time()
                 self.samples = []
                 self.get_logger().info("Takeoff done! Collecting data...")
-                self.anchor_position[3] = self.current_euler[2] + math.radians(90)  # right turn 90 deg (cw) facing solar panel
+                self.anchor_position[3] = self.anchor_position[3] + math.radians(90)  # right turn 90 deg (cw) facing solar panel
 
 
         elif self.state == "ANCHORING":
@@ -758,10 +759,6 @@ class ZDCommNode(Node):
 
 
         elif self.state == "ASCEND":
-            if not self.loop_once:
-                if self.drone_return and self.waypoint == "HOME":
-                    self.anchor_position[3] = self.anchor_position - math.radians(90)
-                self.loop_once = True
             self.publish_offboard_control_mode()
             if self.drone_return and self.waypoint == "HOME":
                 takeoff_altitude = self.pre_home_descend_altitude
@@ -770,6 +767,11 @@ class ZDCommNode(Node):
             z = self.origin_position[2] + takeoff_altitude
             # self.get_logger().info(f"Current: {self.current_position[2]} Target: {takeoff_altitude}")
             self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=z, yaw=self.anchor_position[3])  # Ascend to takeoff altitude
+            if abs(self.current_position[2] - z) <= 1.5:
+                if not self.loop_once:
+                    if self.drone_return and self.waypoint == "HOME":
+                        self.anchor_position[3] = self.anchor_position[3] - math.radians(90)
+                    self.loop_once = True
             if abs(self.current_position[2] - z) <= 0.2:  # Allow small tolerance
                 isgood = True
             else:
@@ -831,6 +833,7 @@ class ZDCommNode(Node):
                     # self.state = "ALIGN_SOLAR_PANEL"
                     # Begin aligning with solar panel (yawing)
                     # self.get_logger().info("Yawing until ultrasonic sensor readings tally...")
+                    self.get_logger().info(f"Target altitude: {self.origin_position[2] + self.hori_grip_height + self.lidar_gripper_offset_front*math.tan(self.solar_panel_angle_in_rad) + self.deploy_altitude}")
                 else:
                     self.publish_active_cam_color(False)
                     self.state = "CUSTOM_PRECISION_DESCEND" #id3
@@ -882,25 +885,25 @@ class ZDCommNode(Node):
         elif self.state == "DEPLOY_DESCEND":
             if not self.loop_once:
                 self.loop_once = True
-                self.deploy_altitude = self.hori_grip_height - self.lidar_cam_offset_front * math.tan(self.solar_panel_angle_in_rad) + self.z_offset
+                self.deploy_altitude = self.hori_grip_height + self.lidar_gripper_offset_front * math.tan(self.solar_panel_angle_in_rad) + self.z_offset
                 self.get_logger().info(f"Deploy Altitude: {self.deploy_altitude}")
 
             altitude_difference = self.deploy_altitude - self.above_ground_altitude
             speed = 0.5  # Default slow descent
 
             if altitude_difference > 4.0:  # Much higher than target
-                speed = 2.0  # Faster descent, but not too fast
+                speed = 2.0/2  # Faster descent, but not too fast
             elif altitude_difference > 1.5:  # Moderately higher
-                speed = 1.5  
+                speed = 1.5/2  
             elif altitude_difference > 0.5:  # Slightly higher
-                speed = 1.3  
+                speed = 1.3/2  
             elif altitude_difference > 0.1:  # Close to target
-                speed = 0.5  
+                speed = 0.5/2  
             elif altitude_difference < -0.1:  # If too low, ascend
-                speed = 2.0  
+                speed = 2.0/2  
                 self.get_logger().info("Too low, ascending slightly...")
             else:  # At the correct altitude
-                speed = 0.3
+                speed = 0.3/2
                 self.get_logger().info("Holding at deployment altitude.")
 
             # Compute target z to maintain gradual descent and corrections

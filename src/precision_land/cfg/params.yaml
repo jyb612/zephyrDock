@@ -1,15 +1,15 @@
 precision_land:
   ros__parameters:
-    ascent_vel: -0.40
+    ascent_vel: -0.4
     descent_vel: 0.2
     hold_vel: -0.01
-    vel_p_gain: 1.7
+    vel_p_gain: 0.5
     vel_i_gain: 0.0
-    max_velocity: 3.0
+    max_velocity: 1.0
     target_timeout: 5.0
     delta_position: 0.2
     delta_velocity: 0.2
-    loaded_robot_z: 0.4
+    loaded_robot_z: 0.4   # should consider lidar gripper offset?
     loaded_land_z: 0.6
     inclined_angle: 0.0   # 20 deg 0.349
     vel_tune: 0.5
@@ -25,7 +25,7 @@ precision_land:
     color_cam_marker_offset_right: 0.175
 
     # Offsets for bnw camera (Adjust as needed)
-    bnw_cam_gripper_offset_front: 0.15
+    bnw_cam_gripper_offset_front: -0.15     # cam behind gripper
     bnw_cam_gripper_offset_right: 0.0
     bnw_cam_gripper_offset_down: 0.1
     lidar_bnw_cam_offset_front: 0.01

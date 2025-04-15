@@ -16,6 +16,7 @@ ArucoTrackerNode::ArucoTrackerNode()
 	_detector = std::make_unique<cv::aruco::ArucoDetector>(dictionary, detectorParams);
 
 	// Define all QoS profiles at the top for maintainability
+	auto image_qos = rclcpp::QoS(10).best_effort();
 	auto critical_qos = rclcpp::QoS(10).reliable();  // Critical boolean commands Camera images (RELIABLE for vision tasks)
 	auto vision_pose_qos = rclcpp::QoS(5).reliable();  // For target_pose pub
 	
@@ -44,7 +45,7 @@ ArucoTrackerNode::ArucoTrackerNode()
 		std::bind(&ArucoTrackerNode::marker_size_callback, this, std::placeholders::_1));
 
 	// Publishers (with matched QoS)
-	_image_pub = create_publisher<sensor_msgs::msg::Image>(image_proc_topic, critical_qos);
+	_image_pub = create_publisher<sensor_msgs::msg::Image>(image_proc_topic, image_qos);
 	_target_pose_pub = create_publisher<geometry_msgs::msg::PoseStamped>(target_pose_topic, vision_pose_qos);  // LIDAR-like data
 	_isloaded_pub = create_publisher<std_msgs::msg::Bool>("/isloaded", critical_qos);
 	_aruco_detected_pub = create_publisher<std_msgs::msg::Bool>(aruco_detected_topic, critical_qos);

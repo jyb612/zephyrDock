@@ -155,22 +155,6 @@
  
 	loadParameters();
 	
-	_start_time = _node.now();
-
-	auto t = std::time(nullptr);
-	auto tm = *std::localtime(&t);
-	std::ostringstream oss;
-	oss << "logs/pid_log_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".csv";
-	std::string log_filename = oss.str();
-
-	_csv_log_file.open(log_filename, std::ios::out | std::ios::trunc);
-	if (_csv_log_file.is_open()) {
-		_csv_log_file << "timestamp,error_x,error_y,integral_x,integral_y,vx,vy,"
-		              << "drone_x,drone_y,tag_x,tag_y\n";
-	} else {
-		RCLCPP_WARN(_node.get_logger(), "Failed to open CSV log file: %s", log_filename.c_str());
-	}
-
  }
  
  void PrecisionLand::loadParameters()
@@ -263,7 +247,7 @@
 
  void PrecisionLand::lidar_range_callback(const std_msgs::msg::Float32::SharedPtr msg)
  {
-	 _above_ground_altitude = -float(msg->data);
+	//  _above_ground_altitude = -float(msg->data);
  }
  
  void PrecisionLand::aruco_id_callback(const std_msgs::msg::Int32::SharedPtr msg)
@@ -331,7 +315,7 @@
 	 if (_search_started && !(_is_active_cam_color)){
 		//  RCLCPP_INFO(_node.get_logger(), "bnw");
 		 float delta_y = -_param_bnw_cam_gripper_offset_front*pow(sin(_param_inclined_angle),2) - _param_bnw_cam_marker_offset_front;
-		 delta_y = 0;
+		//  delta_y = 0;
 		 auto tag = ArucoTag {
 			 .position = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y+delta_y, msg->pose.position.z),
 			 .orientation = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z),
@@ -390,6 +374,21 @@
 	 generateSearchWaypoints();
 	 _search_started = true;
 	 switchToState(State::Search);
+	 _start_time = _node.now();
+
+	auto t = std::time(nullptr);
+	auto tm = *std::localtime(&t);
+	std::ostringstream oss;
+	oss << "logs/pid_log_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".csv";
+	std::string log_filename = oss.str();
+
+	_csv_log_file.open(log_filename, std::ios::out | std::ios::trunc);
+	if (_csv_log_file.is_open()) {
+		_csv_log_file << "timestamp,error_x,error_y,integral_x,integral_y,vx,vy,"
+		              << "drone_x,drone_y,tag_x,tag_y\n";
+	} else {
+		RCLCPP_WARN(_node.get_logger(), "Failed to open CSV log file: %s", log_filename.c_str());
+	}
  }
  
  void PrecisionLand::onDeactivate()
@@ -471,7 +470,7 @@
  
 		 _trajectory_setpoint->updatePosition(_approach_position);
  
-		 if (positionReached(target_position)) {
+		 if (positionReached(_approach_position)) {
 			 switchToState(State::Descend);
 			 _approach_position_set = false;  // Reset for next time we enter Approach
 		 }
@@ -492,15 +491,15 @@
 		 // _above_ground_altitude = _above_ground_altitude + _tag.position.z();			// ACTUAL
 		//  RCLCPP_INFO(_node.get_logger(), "Above Ground Height: %f", _above_ground_altitude);
 		 if (_aruco_id == 3){	// loaded	
-			 float delta_z = _param_bnw_cam_gripper_offset_front/2*sin(2*_param_inclined_angle);
+			 float delta_z = -_param_bnw_cam_gripper_offset_front/2*sin(2*_param_inclined_angle);
 			 _target_z = _param_loaded_robot_z + abs(delta_z);
 		 }
 		 else{
 			 if (_aruco_id == 1){
 				_target_z = _param_loaded_land_z;
 				// RCLCPP_INFO(_node.get_logger(), "(%.2f, %.2f, %.2f)", _target_z, _param_loaded_land_z, _above_ground_altitude);
-				if (_is_active_cam_color)
-					_param_inclined_angle = 0.0;
+				// if (_is_active_cam_color)
+				// 	_param_inclined_angle = 0.0;
 			 }
 		 }
 			 
@@ -557,14 +556,14 @@
 		 // _above_ground_altitude = _above_ground_altitude + _tag.position.z();		// ACTUAL
 		//  RCLCPP_INFO(_node.get_logger(), "Above Ground Height: %f", _above_ground_altitude);
 		 if (_aruco_id == 3){	// loaded
-			 float delta_z = _param_bnw_cam_gripper_offset_front/2*sin(2*_param_inclined_angle);
+			 float delta_z = -_param_bnw_cam_gripper_offset_front/2*sin(2*_param_inclined_angle);
 			 _target_z = _param_loaded_robot_z + abs(delta_z);
 		 }
 		 else{
 			 if (_aruco_id == 1){
 				_target_z = _param_loaded_land_z;
-				if (_is_active_cam_color)
-					_param_inclined_angle = 0.0;
+				// if (_is_active_cam_color)
+				// 	_param_inclined_angle = 0.0;
 			 }
 		 }
  
