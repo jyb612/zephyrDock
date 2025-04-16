@@ -32,8 +32,8 @@ class ZDLoggingNode(Node):
             history=QoSHistoryPolicy.KEEP_LAST,
             depth=5  # Moderate buffer for sensor data
         )
-
-        self.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.odometry_callback, px4_qos)
+        self.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position', self.local_position_callback, px4_qos)
+        # self.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.odometry_callback, px4_qos)
         self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status', self.vehicle_status_callback, px4_qos)
         self.create_subscription(TrajectorySetpoint, '/fmu/in/trajectory_setpoint', self.trajectory_setpoint_callback, critical_qos)
 
@@ -95,24 +95,22 @@ class ZDLoggingNode(Node):
 
     # def isloaded_callback(self, msg):
     #     self.isloaded = True if msg.data else False
+    
+    def local_position_callback(self, msg):
+        """Callback to update the current position from vehicle_local_position."""
         
-    def odometry_callback(self, msg):
-        """Callback to update the current position."""
-        
-
         self.odom_log.flush()  # Ensure data is written immediately
-        
-        # Extract quaternion
-        q = [msg.q[0], msg.q[1], msg.q[2], msg.q[3]]
-        
-        # # Convert quaternion to Euler angles (roll, pitch, yaw)
-        # _,_, self.current_position[3] = self.quaternion_to_euler(q)
-        # yaw = -180 ~ 180
+
+        # Check if position estimates are valid before using them
+        if not (msg.xy_valid and msg.z_valid):
+            self.get_logger().warn("Position estimate not valid!")
+            return
+
+        # Store NED position (X, Y, Z)
         self.current_position = [
-            float(msg.position[0]),  # X in NED
-            float(msg.position[1]),  # Y in NED
-            float(msg.position[2]),  # Z in NED
-            self.quaternion_to_euler(q)[2],
+            float(msg.x),  # North (X) in meters
+            float(msg.y),  # East (Y) in meters
+            float(msg.z),  # Down (Z) in meters (negative for altitude)
         ]
 
         # Simple logging - just position and timestamp
@@ -133,6 +131,54 @@ class ZDLoggingNode(Node):
             self.servo_position,            # current serial bus servo position (int)
             self.custom_mode_done,          # custom mode status (bool)
         ])
+
+        # # Store velocities (if needed)
+        # self.current_velocity = [
+        #     float(msg.vx),  # North velocity
+        #     float(msg.vy),  # East velocity
+        #     float(msg.vz),  # Down velocity
+        # ]
+
+        # Store yaw (heading) in radians
+        # self.current_yaw = float(msg.heading)
+
+    # def odometry_callback(self, msg):
+    #     """Callback to update the current position."""
+        
+
+    #     self.odom_log.flush()  # Ensure data is written immediately
+        
+    #     # Extract quaternion
+    #     q = [msg.q[0], msg.q[1], msg.q[2], msg.q[3]]
+        
+    #     # # Convert quaternion to Euler angles (roll, pitch, yaw)
+    #     # _,_, self.current_position[3] = self.quaternion_to_euler(q)
+    #     # yaw = -180 ~ 180
+    #     self.current_position = [
+    #         float(msg.position[0]),  # X in NED
+    #         float(msg.position[1]),  # Y in NED
+    #         float(msg.position[2]),  # Z in NED
+    #         self.quaternion_to_euler(q)[2],
+    #     ]
+
+    #     # Simple logging - just position and timestamp
+    #     self.odom_writer.writerow([
+    #         time.time(), 
+    #         self.current_position[0],       # current odometry x (NED) (float32)
+    #         self.current_position[1],       # current odometry y (NED) (float32)
+    #         self.current_position[2],       # current odometry z (NED) (float32)
+    #         self.current_position[3],       # current yaw (0 = North, 90 = East, -90 = West) (float32)
+    #         self.above_ground_altitude,     # current lidar range (height to nearest ground) (float32)
+    #         self.trajectory_setpoint[0],    # next trajectory setpoint odometry x (NED) (float32)
+    #         self.trajectory_setpoint[1],    # next trajectory setpoint odometry y (NED) (float32)
+    #         self.trajectory_setpoint[2],    # next trajectory setpoint odometry z (NED) (float32)
+    #         self.trajectory_setpoint[3],    # next trajectory setpoint yaw (float32)
+    #         self.current_mode,              # current nav_state (int)
+    #         self.armed,                     # arm state (bool)
+    #         self.aruco_id,                  # current target ArUco marker id (int)
+    #         self.servo_position,            # current serial bus servo position (int)
+    #         self.custom_mode_done,          # custom mode status (bool)
+    #     ])
 
     def quaternion_to_euler(self, q):
         """Convert quaternion to Euler angles (roll, pitch, yaw)"""

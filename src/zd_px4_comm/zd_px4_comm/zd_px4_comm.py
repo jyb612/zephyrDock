@@ -2,7 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-from px4_msgs.msg import VehicleCommand, OffboardControlMode, TrajectorySetpoint, VehicleOdometry, VehicleStatus
+from px4_msgs.msg import VehicleCommand, OffboardControlMode, TrajectorySetpoint, VehicleLocalPosition, VehicleStatus
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 import time
 from std_msgs.msg import Int32, Bool, Float32, Float32MultiArray  # For servo command
@@ -54,7 +54,8 @@ class ZDCommNode(Node):
         self.offboard_control_mode_publisher = self.create_publisher(OffboardControlMode, '/fmu/in/offboard_control_mode', px4_qos)
         self.trajectory_setpoint_publisher = self.create_publisher(TrajectorySetpoint, '/fmu/in/trajectory_setpoint', critical_qos)
 
-        self.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.odometry_callback, px4_qos)
+        self.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position', self.local_position_callback, px4_qos)
+        # self.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.odometry_callback, px4_qos)
         self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status', self.vehicle_status_callback, px4_qos)
 
         # Critical Commands (RELIABLE)
@@ -174,7 +175,8 @@ class ZDCommNode(Node):
         self.current_position = [0.0, 0.0, 0.0]  # Current position in NED
         self.anchor_position = [0.0, 0.0, 0.0, 0.0]
         self.angular_velocity = [0.0, 0.0, 0.0]
-        self.current_euler = [0.0, 0.0, 0.0] # roll, pitch, yaw (rad)
+        self.current_yaw = None
+        # self.current_euler = [0.0, 0.0, 0.0] # roll, pitch, yaw (rad)
         self.origin_position = [0.0, 0.0, 0.0]
         self.above_ground_altitude = None  # To store the current altitude
         self.solar_panel_angle_in_rad = 0.0
@@ -248,59 +250,88 @@ class ZDCommNode(Node):
     def solar_panel_angle_in_rad_callback(self, msg):
 
         self.get_logger().info(f'Published: {msg.data}')
-        
-    def odometry_callback(self, msg):
-        """Callback to update the current position."""
+    
+    def local_position_callback(self, msg):
+        """Callback to update the current position from vehicle_local_position."""
+        # Check if position estimates are valid before using them
+        if not (msg.xy_valid and msg.z_valid):
+            self.get_logger().warn("Position estimate not valid!")
+            return
+
+        # Store NED position (X, Y, Z)
         self.current_position = [
-            float(msg.position[0]),  # X in NED
-            float(msg.position[1]),  # Y in NED
-            float(msg.position[2]),  # Z in NED
+            float(msg.x),  # North (X) in meters
+            float(msg.y),  # East (Y) in meters
+            float(msg.z),  # Down (Z) in meters (negative for altitude)
         ]
-        self.angular_velocity = [
-            float(msg.angular_velocity[0]),  # Roll angular velocity
-            float(msg.angular_velocity[1]),  # Pitch angular velocity
-            float(msg.angular_velocity[2]),  # Yaw angular velocity
-        ]
-        # self.get_logger().info(f"(X={msg.position[0]}, Y={msg.position[1]}, Z={msg.position[2]})")
 
-        # Simple logging - just position and timestamp
-        # self.odom_writer.writerow([
-        #     time.time(),
-        #     self.current_position[0],
-        #     self.current_position[1],
-        #     self.current_position[2],
-        #     self.above_ground_altitude
-        # ])
+        # # Store velocities (if needed)
+        # self.current_velocity = [
+        #     float(msg.vx),  # North velocity
+        #     float(msg.vy),  # East velocity
+        #     float(msg.vz),  # Down velocity
+        # ]
 
-        # self.odom_log.flush()  # Ensure data is written immediately
+        # Store yaw (heading) in radians
+        self.current_yaw = float(msg.heading)
+
+        # # Logging (optional)
+        # self.get_logger().info(
+        #     f"Position (NED): X={msg.x:.2f}, Y={msg.y:.2f}, Z={msg.z:.2f}, Yaw={np.degrees(msg.heading):.2f}°"
+        # )
+
+    # def odometry_callback(self, msg):
+    #     """Callback to update the current position."""
+    #     self.current_position = [
+    #         float(msg.position[0]),  # X in NED
+    #         float(msg.position[1]),  # Y in NED
+    #         float(msg.position[2]),  # Z in NED
+    #     ]
+    #     self.angular_velocity = [
+    #         float(msg.angular_velocity[0]),  # Roll angular velocity
+    #         float(msg.angular_velocity[1]),  # Pitch angular velocity
+    #         float(msg.angular_velocity[2]),  # Yaw angular velocity
+    #     ]
+    #     # self.get_logger().info(f"(X={msg.position[0]}, Y={msg.position[1]}, Z={msg.position[2]})")
+
+    #     # Simple logging - just position and timestamp
+    #     # self.odom_writer.writerow([
+    #     #     time.time(),
+    #     #     self.current_position[0],
+    #     #     self.current_position[1],
+    #     #     self.current_position[2],
+    #     #     self.above_ground_altitude
+    #     # ])
+
+    #     # self.odom_log.flush()  # Ensure data is written immediately
         
-        # Extract quaternion
-        q = [msg.q[0], msg.q[1], msg.q[2], msg.q[3]]
+    #     # Extract quaternion
+    #     q = [msg.q[0], msg.q[1], msg.q[2], msg.q[3]]
         
-        # Convert quaternion to Euler angles (roll, pitch, yaw)
-        self.current_euler = self.quaternion_to_euler(q)
-        # yaw = -180 ~ 180
+    #     # Convert quaternion to Euler angles (roll, pitch, yaw)
+    #     self.current_euler = self.quaternion_to_euler(q)
+    #     # yaw = -180 ~ 180
 
-    def quaternion_to_euler(self, q):
-        """Convert quaternion to Euler angles (roll, pitch, yaw)"""
-        # Roll (x-axis rotation)
-        sinr_cosp = 2 * (q[0] * q[1] + q[2] * q[3])
-        cosr_cosp = 1 - 2 * (q[1] * q[1] + q[2] * q[2])
-        roll = np.arctan2(sinr_cosp, cosr_cosp)
+    # def quaternion_to_euler(self, q):
+    #     """Convert quaternion to Euler angles (roll, pitch, yaw)"""
+    #     # Roll (x-axis rotation)
+    #     sinr_cosp = 2 * (q[0] * q[1] + q[2] * q[3])
+    #     cosr_cosp = 1 - 2 * (q[1] * q[1] + q[2] * q[2])
+    #     roll = np.arctan2(sinr_cosp, cosr_cosp)
 
-        # Pitch (y-axis rotation)
-        sinp = 2 * (q[0] * q[2] - q[3] * q[1])
-        if abs(sinp) >= 1:
-            pitch = np.copysign(np.pi / 2, sinp)  # Use 90 degrees if out of range
-        else:
-            pitch = np.arcsin(sinp)
+    #     # Pitch (y-axis rotation)
+    #     sinp = 2 * (q[0] * q[2] - q[3] * q[1])
+    #     if abs(sinp) >= 1:
+    #         pitch = np.copysign(np.pi / 2, sinp)  # Use 90 degrees if out of range
+    #     else:
+    #         pitch = np.arcsin(sinp)
 
-        # Yaw (z-axis rotation)
-        siny_cosp = 2 * (q[0] * q[3] + q[1] * q[2])
-        cosy_cosp = 1 - 2 * (q[2] * q[2] + q[3] * q[3])
-        yaw = np.arctan2(siny_cosp, cosy_cosp)
+    #     # Yaw (z-axis rotation)
+    #     siny_cosp = 2 * (q[0] * q[3] + q[1] * q[2])
+    #     cosy_cosp = 1 - 2 * (q[2] * q[2] + q[3] * q[3])
+    #     yaw = np.arctan2(siny_cosp, cosy_cosp)
 
-        return roll, pitch, yaw
+    #     return roll, pitch, yaw
 
     def vehicle_status_callback(self, msg):
         """Callback to update the current mode."""
@@ -536,19 +567,24 @@ class ZDCommNode(Node):
                     self.anchor_position[1] = self.origin_position[1]
 
                     # # define waypoint to solar panel
-                    x, y =self.calculate_destination(x0=self.origin_position[0], y0=self.origin_position[1], theta=math.degrees(self.current_euler[2]), phi=90.0, d=self.waypoint_solar_panel_distance)
+                    x, y =self.calculate_destination(x0=self.origin_position[0], y0=self.origin_position[1], theta=math.degrees(self.current_yaw), phi=90.0, d=self.waypoint_solar_panel_distance)
+                    # x, y =self.calculate_destination(x0=self.origin_position[0], y0=self.origin_position[1], theta=math.degrees(self.current_euler[2]), phi=90.0, d=self.waypoint_solar_panel_distance)
                     self.waypoint_solar_panel[0] = x
                     self.waypoint_solar_panel[1] = y
 
                     self.get_logger().info(f"solar panel=({self.waypoint_solar_panel[0]}, {self.waypoint_solar_panel[1]}, {self.waypoint_solar_panel[2]})")
-                    self.anchor_position[3] = self.current_euler[2]
+                    
+                    self.anchor_position[3] = self.current_yaw
+                    # self.anchor_position[3] = self.current_euler[2]
 
                     # # define waypoint to home
                     self.waypoint_home[0] = self.origin_position[0]
                     self.waypoint_home[1] = self.origin_position[1]
 
                     self.lidar_ground_level = self.above_ground_altitude
-                    self.get_logger().info(f"\ncurrent yaw = {math.degrees(self.anchor_position[3])}\ncurrent odometry z = {self.current_position[2]}\norigin above aground altitude = {self.lidar_ground_level}")
+                    self.get_logger().info(f"origin=({self.origin_position[0]}, {self.origin_position[1]}, {self.origin_position[2]}, yaw = {math.degrees(self.current_yaw)})")
+
+                    self.get_logger().info(f"\norigin above ground altitude = {self.lidar_ground_level}")
                     self.service_mode = input("Input 'd' to deploy, 'r' to return robot: ").upper()
 
                     if self.service_mode == 'D' or self.service_mode == 'R':
@@ -561,7 +597,7 @@ class ZDCommNode(Node):
 
         elif self.state == "ARMING":
             if not self.loop_once:
-                if (self.current_mode != 4 and self.current_mode != 18):
+                if (self.current_mode != 4 and self.current_mode != 18 and self.current_mode != 5):
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 4.0, 3.0)
                 self.loop_once = True
             if not self.armed:              # ensure arm and take off (repeatedly send signal)
@@ -670,7 +706,7 @@ class ZDCommNode(Node):
 
         elif self.state == "PRE_HOME_DESCEND":
             # descend_rate = 0.2
-            if (self.current_mode != 14 and self.current_mode != 18):
+            if (self.current_mode != 14 and self.current_mode != 18 and self.current_mode != 5):
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
             if not self.loop_once:
                 self.anchor_position[0] = self.origin_position[0]
@@ -690,7 +726,7 @@ class ZDCommNode(Node):
 
 
         elif self.state == "CUSTOM_PRECISION_DESCEND":  # if id=0 land, else hover
-            if (self.current_mode != 23 and self.current_mode != 18):
+            if (self.current_mode != 23 and self.current_mode != 18 and self.current_mode != 5):
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_CUSTOM_MODE)  # Switch to custom precision land (hover) mode
             if not self.loop_once:
                 # self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_CUSTOM_MODE)  # Switch to custom precision land (hover) mode
@@ -704,7 +740,8 @@ class ZDCommNode(Node):
                 self.get_logger().info("Precision Landing on Drone Home automatically...")
 
             elif self.custom_mode_done:  # Wait for custom precision land (hover) mode completion signal
-                self.anchor_position[3] = self.current_euler[2]
+                self.anchor_position[3] = self.current_yaw
+                # self.anchor_position[3] = self.current_euler[2]
                 self.state = "SERVO_ACTION"
                 self.aruco_descend = True
                 self.loop_once = False
@@ -856,6 +893,7 @@ class ZDCommNode(Node):
         #         self.state = "DEPLOY_DESCEND"
         #         self.hover_start_time = None
         #         self.loop_once = False
+        # !!!!!!!!!! self.current euler changed
         #         self.anchor_position[3] = self.current_euler[2]
         #         self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.waypoint_solar_panel[2], yaw = self.anchor_position[3])
         #         self.get_logger().info("Descending for payload release")
