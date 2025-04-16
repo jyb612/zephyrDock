@@ -3,13 +3,13 @@ precision_land:
     ascent_vel: -0.35
     descent_vel: 0.15
     hold_vel: -0.01
-    vel_p_gain: 1.1
+    vel_p_gain: 0.7
     vel_i_gain: 0.0
     max_velocity: 0.5
     target_timeout: 5.0
     delta_position: 0.2
     delta_velocity: 0.2
-    loaded_robot_z: 0.4   # should consider lidar gripper offset?
+    loaded_robot_z: 0.5   # should consider lidar gripper offset?
     loaded_land_z: 0.6
     inclined_angle: 0.0   # 20 deg 0.349
     vel_tune: 0.5
