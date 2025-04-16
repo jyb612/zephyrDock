@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from px4_msgs.msg import VehicleCommand, OffboardControlMode, TrajectorySetpoint, VehicleOdometry, VehicleStatus
+from px4_msgs.msg import VehicleCommand, OffboardControlMode, TrajectorySetpoint, VehicleLocalPosition, VehicleStatus
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 import time
 from std_msgs.msg import Int32, Bool, Float32, Float32MultiArray  # For servo command
@@ -111,6 +111,7 @@ class ZDLoggingNode(Node):
             float(msg.x),  # North (X) in meters
             float(msg.y),  # East (Y) in meters
             float(msg.z),  # Down (Z) in meters (negative for altitude)
+            float(msg.heading),
         ]
 
         # Simple logging - just position and timestamp

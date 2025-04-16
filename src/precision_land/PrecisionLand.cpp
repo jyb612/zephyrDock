@@ -430,6 +430,10 @@
 			 _approach_altitude = _vehicle_local_position->positionNed().z();
 			 RCLCPP_INFO(_node.get_logger(), "Approach altitude: %.2f", float(_approach_altitude));
 			 if (_tag.valid()){
+				if (_approach_position_set ){
+					RCLCPP_INFO(_node.get_logger(), "_approach_position_set not reset, error");
+					break;
+				}
 				RCLCPP_INFO(_node.get_logger(), "valid, x = %.2f, y = %.2f", float(_tag.position.x()), float(_tag.position.y()));
 				switchToState(State::Approach);
 				_search_waypoint_index = 0;
@@ -455,68 +459,68 @@
 	 }
  
 	 case State::Approach: {
-		if (target_lost) {
-			RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
-			ModeBase::completed(px4_ros2::Result::ModeFailureOther);
-			switchToState(State::Idle);
-			return;
-		}
+		// if (target_lost) {
+		// 	RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
+		// 	ModeBase::completed(px4_ros2::Result::ModeFailureOther);
+		// 	switchToState(State::Idle);
+		// 	return;
+		// }
 
-		// Approach using position setpoints
-		auto target_position = Eigen::Vector3f(_tag.position.x(), _tag.position.y(), _approach_altitude);
-		Eigen::Vector3f current_position(_vehicle_local_position->positionNed().x(), 
-							   _vehicle_local_position->positionNed().y(), 
-							   _vehicle_local_position->positionNed().z());
-		if (!_approach_position_set) {
-			_approach_position = Eigen::Vector3f(_tag.position.x(), _tag.position.y(), _approach_altitude);
-			_approach_position_set = true;
-			RCLCPP_INFO(_node.get_logger(), "Approach position set to (%.2f, %.2f, %.2f)",
-						_approach_position.x(), _approach_position.y(), _approach_position.z());
-		}
-		// Compute direction vector
-		Eigen::Vector3f direction = target_position - current_position;
-		float distance = direction.norm();
-
-		// If close enough, snap to target
-		if (distance < 0.1f) {
-			_trajectory_setpoint->updatePosition(target_position);
-		} 
-		// Otherwise, move towards target at fixed speed
-		else {
-			float speed = 0.8f; // [m/s]
-			float step = speed * 0.1f; // For 10Hz control rate
-			Eigen::Vector3f next_position = current_position + direction.normalized() * std::min(step, distance);
-			_trajectory_setpoint->updatePosition(next_position);
-		}
-
-		if (positionReached(target_position)) {
-			switchToState(State::Descend);
-		}
-
-		break;
-		//  if (target_lost) {
-		// 	 RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
-		// 	 ModeBase::completed(px4_ros2::Result::ModeFailureOther);
-		// 	 switchToState(State::Idle);
-		// 	 return;
-		//  }
-
-		//  // Set target position once
-		//  if (!_approach_position_set) {
+		// // Approach using position setpoints
+		// auto target_position = Eigen::Vector3f(_tag.position.x(), _tag.position.y(), _approach_altitude);
+		// Eigen::Vector3f current_position(_vehicle_local_position->positionNed().x(), 
+		// 					   _vehicle_local_position->positionNed().y(), 
+		// 					   _vehicle_local_position->positionNed().z());
+		// if (!_approach_position_set) {
 		// 	_approach_position = Eigen::Vector3f(_tag.position.x(), _tag.position.y(), _approach_altitude);
 		// 	_approach_position_set = true;
 		// 	RCLCPP_INFO(_node.get_logger(), "Approach position set to (%.2f, %.2f, %.2f)",
 		// 				_approach_position.x(), _approach_position.y(), _approach_position.z());
 		// }
+		// // Compute direction vector
+		// Eigen::Vector3f direction = target_position - current_position;
+		// float distance = direction.norm();
+
+		// // If close enough, snap to target
+		// if (distance < 0.1f) {
+		// 	_trajectory_setpoint->updatePosition(target_position);
+		// } 
+		// // Otherwise, move towards target at fixed speed
+		// else {
+		// 	float speed = 1.0f; // [m/s]
+		// 	float step = speed * 0.1f; // For 10Hz control rate
+		// 	Eigen::Vector3f next_position = current_position + direction.normalized() * std::min(step, distance);
+		// 	_trajectory_setpoint->updatePosition(next_position);
+		// }
+
+		// if (positionReached(target_position)) {
+		// 	switchToState(State::Descend);
+		// }
+
+		// break;
+		 if (target_lost) {
+			 RCLCPP_INFO(_node.get_logger(), "Failed! Target lost during %s", stateName(_state).c_str());
+			 ModeBase::completed(px4_ros2::Result::ModeFailureOther);
+			 switchToState(State::Idle);
+			 return;
+		 }
+
+		 // Set target position once
+		 if (!_approach_position_set) {
+			_approach_position = Eigen::Vector3f(_tag.position.x(), _tag.position.y(), _approach_altitude);
+			_approach_position_set = true;
+			RCLCPP_INFO(_node.get_logger(), "Approach position set to (%.2f, %.2f, %.2f)",
+						_approach_position.x(), _approach_position.y(), _approach_position.z());
+		}
  
-		//  _trajectory_setpoint->updatePosition(_approach_position);
+		 _trajectory_setpoint->updatePosition(_approach_position);
  
-		//  if (positionReached(_approach_position)) {
-		// 	 switchToState(State::Descend);
-		// 	 _approach_position_set = false;  // Reset for next time we enter Approach
-		//  }
+		 if (positionReached(_approach_position)) {
+			 switchToState(State::Descend);
+			 _approach_position_set = false;  // Reset for next time we enter Approach
+		 }
  
-		//  break;
+		 break;
 	 }
 	 case State::Descend: {
 		// RCLCPP_INFO(_node.get_logger(), "TEST");
@@ -544,8 +548,8 @@
 			 }
 		 }
 			 
-		//  if (_aruco_id == 0){
-		 if (_aruco_id == 1 && _aruco_id == 0){
+		 if (_aruco_id == 0){
+		//  if (_aruco_id == 1 && _aruco_id == 0){
 			 Eigen::Vector2f vel = calculateVelocitySetpointXY();
 			 _trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_descent_vel), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 			 _param_inclined_angle = 0.0;
@@ -601,7 +605,7 @@
 			 _target_z = _param_loaded_robot_z + abs(delta_z);
 		 }
 		 else{
-			 if (_aruco_id == 1 && _aruco_id == 0){
+			 if (_aruco_id == 1){
 				_target_z = _param_loaded_land_z;
 				// if (_is_active_cam_color)
 				// 	_param_inclined_angle = 0.0;

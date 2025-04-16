@@ -687,8 +687,8 @@ class ZDCommNode(Node):
                 self.hover_start_time = None
                 if self.drone_return:
                     self.state = "PRE_HOME_DESCEND"
-                    # self.publish_aruco_info(0)
-                    self.publish_aruco_info(1)
+                    self.publish_aruco_info(0)
+                    # self.publish_aruco_info(1)
                 elif self.service_mode == "D":
                     self.state = "CUSTOM_PRECISION_DESCEND"
                     # self.publish_aruco_info(1)          # SIM
@@ -836,8 +836,8 @@ class ZDCommNode(Node):
                             self.anchor_position[3] = self.anchor_position[3] - math.radians(90)
                     elif self.drone_return:
                         self.state = "CUSTOM_PRECISION_DESCEND"
-                        # self.publish_aruco_info(0)
-                        self.publish_aruco_info(1)
+                        self.publish_aruco_info(0)
+                        # self.publish_aruco_info(1)
                     elif self.waypoint == "HOME":
                         self.state = "WAYPOINT_SOLAR_PANEL"
                     self.loop_once = False
