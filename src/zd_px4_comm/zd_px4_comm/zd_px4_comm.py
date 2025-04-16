@@ -773,7 +773,7 @@ class ZDCommNode(Node):
                     self.drone_return = True 
                     self.get_logger().info("Release - servo command published.")
                 self.servo_command_publisher.publish(servo_msg)
-            elif time.time() - self.hover_start_time >= 1.0 and self.gripper_retry:
+            elif (time.time() - self.hover_start_time) >= 1.0 and self.gripper_retry:
                 self.gripper_retry = False
                 servo_msg.data = GRIP_STRONG
                 self.gripper_gripped = True
@@ -966,6 +966,7 @@ class ZDCommNode(Node):
             if self.stable_check(isgood):
                 self.state = "SERVO_ACTION"
                 self.aruco_descend = False
+                self.loop_once = False
 
 
         elif self.state == "WAYPOINT_HOME":

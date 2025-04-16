@@ -699,8 +699,10 @@
 					  << vx << "," << vy << ","
 					  << _vehicle_local_position->positionNed().x() << ","
 					  << _vehicle_local_position->positionNed().y() << ","
-					  << _tag.position.x() << "," << _tag.position.y() << "\n";
-	}
+					  << _tag.position.x() << "," << _tag.position.y() << ","
+					  << _above_ground_altitude << ","  // Existing parameter
+					  << _target_z << "\n";             // New parameter
+	 }
  
 	 return Eigen::Vector2f(vx, vy);
  }
