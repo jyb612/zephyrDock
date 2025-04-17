@@ -385,7 +385,6 @@
 	_csv_log_file.open(log_filename, std::ios::out | std::ios::trunc);
 	if (_csv_log_file.is_open()) {
 		_csv_log_file << "timestamp,error_x,error_y,integral_x,integral_y,vx,vy,"
-		              << "drone_x,drone_y,tag_x,tag_y,above_ground_altitude,target_z\n";
 	} else {
 		RCLCPP_WARN(_node.get_logger(), "Failed to open CSV log file: %s", log_filename.c_str());
 	}
