@@ -636,7 +636,7 @@ class ZDCommNode(Node):
                     self.waypoint_solar_panel[0] = x
                     self.waypoint_solar_panel[1] = y
 
-                    self.get_logger().info(f"solar panel=({self.waypoint_solar_panel[0]}, {self.waypoint_solar_panel[1]}, {self.waypoint_solar_panel[2]})")
+                    self.get_logger().info(f"==ZephyrDock==\nsolar panel=({self.waypoint_solar_panel[0]}, {self.waypoint_solar_panel[1]}, {self.waypoint_solar_panel[2]})")
                     
                     self.anchor_position[3] = self.current_yaw
                     # self.anchor_position[3] = self.current_euler[2]
