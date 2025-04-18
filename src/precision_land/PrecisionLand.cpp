@@ -385,6 +385,7 @@
 	_csv_log_file.open(log_filename, std::ios::out | std::ios::trunc);
 	if (_csv_log_file.is_open()) {
 		_csv_log_file << "timestamp,error_x,error_y,integral_x,integral_y,vx,vy,"
+		              << "drone_x,drone_y,tag_x,tag_y,above_ground_z,target_z\n";
 	} else {
 		RCLCPP_WARN(_node.get_logger(), "Failed to open CSV log file: %s", log_filename.c_str());
 	}
@@ -504,6 +505,10 @@
 			 return;
 		 }
 
+		 Eigen::Vector3f _current_position(_vehicle_local_position->positionNed().x(), 
+							   _vehicle_local_position->positionNed().y(), 
+							   _vehicle_local_position->positionNed().z());
+
 		 // Set target position once
 		 if (!_approach_position_set) {
 			_approach_position = Eigen::Vector3f(_tag.position.x(), _tag.position.y(), _approach_altitude);
@@ -512,7 +517,18 @@
 						_approach_position.x(), _approach_position.y(), _approach_position.z());
 		}
  
-		 _trajectory_setpoint->updatePosition(_approach_position);
+		// Check X and Y difference separately
+		float dx = std::abs(_approach_position.x() - _current_position.x());
+		float dy = std::abs(_approach_position.y() - _current_position.y());
+
+		if (dx > 8.0f || dy > 8.0f) {
+			RCLCPP_WARN(_node.get_logger(), "Target too far (dx=%.2f, dy=%.2f). Not publishing setpoint.", dx, dy);
+			// Optionally switch to Idle or another safety state if needed
+			// switchToState(State::Idle);
+		} else {
+			// Only publish if within limits
+			_trajectory_setpoint->updatePosition(_approach_position);
+}
  
 		 if (positionReached(_approach_position)) {
 			 switchToState(State::Descend);

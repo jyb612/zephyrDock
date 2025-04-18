@@ -1,10 +1,10 @@
 precision_land:
   ros__parameters:
     ascent_vel: -0.35
-    descent_vel: 0.15
+    descent_vel: 0.11
     hold_vel: -0.01
     vel_p_gain: 0.7
-    vel_i_gain: 0.0
+    vel_i_gain: 0.07
     max_velocity: 0.5
     target_timeout: 5.0
     delta_position: 0.2

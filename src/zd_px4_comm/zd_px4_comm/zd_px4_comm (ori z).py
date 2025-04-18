@@ -389,7 +389,7 @@ class ZDCommNode(Node):
         offboard_msg = OffboardControlMode()
         offboard_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         offboard_msg.position = True
-        offboard_msg.velocity = False
+        offboard_msg.velocity = True
         offboard_msg.acceleration = False
         offboard_msg.attitude = False
         offboard_msg.body_rate = False
@@ -397,96 +397,41 @@ class ZDCommNode(Node):
     
     def publish_trajectory_setpoint(self, x, y, z, yaw, speed=4.0):
         """
-        Modified version that:
-        - Uses speed parameter for both XY and Z movements
-        - Adjusts Z incrementally based on speed
-        - Uses LiDAR only for validation (never publishes directly)
-        - Maintains FRD coordinate convention
+        Publishes a trajectory setpoint while ensuring correct handling of ENU (East-North-Up) 
+        and FRD (Forward-Right-Down) coordinate frames.
         """
-        # Current state (all in FRD frame)
-        current_x = self.current_position[0]
-        current_y = self.current_position[1]
-        current_z = self.current_position[2]  # Negative down
-        current_lidar_z = self.above_ground_altitude  # Already in FRD (negative)
 
-        # XY movement (using speed parameter)
+        target_z = z
+        current_z = self.current_position[2]
+
+        current_x = self.current_position[0]  # FRD X
+        current_y = self.current_position[1]  # FRD Y
+
+        # Compute direction vector in FRD
         dx = x - current_x
         dy = y - current_y
-        distance_xy = (dx**2 + dy**2)**0.5
-        
-        if distance_xy < 0.1:  # XY reached
-            next_x, next_y = x, y
+        dz = target_z - current_z  # Ensure FRD handling
+
+        distance = (dx**2 + dy**2 + dz**2)**0.5
+
+        if distance < 0.1:  # Reached target (tolerance in meters)
+            next_x, next_y, next_z = x, y, target_z
         else:
-            step_xy = min(speed * 0.1, distance_xy)  # 10Hz control loop
-            next_x = current_x + (dx/distance_xy)*step_xy
-            next_y = current_y + (dy/distance_xy)*step_xy
+            # Normalize and scale by speed (10Hz assumed)
+            step = min(speed * 0.1, distance)
+            next_x = current_x + (dx / distance) * step
+            next_y = current_y + (dy / distance) * step
+            next_z = current_z + (dz / distance) * step  # FRD Z handled correctly
 
-        # Z adjustment (using speed parameter scaled for vertical movement)
-        error = z - current_lidar_z  # Both negative values
-        vertical_speed = speed * 0.5  # Reduce speed for vertical (adjust factor as needed)
-        z_step_size = vertical_speed * 0.1  # 10Hz control loop
-
-        if abs(error) < 0.15:  # Within 15cm tolerance
-            next_z = current_z  # Freeze Z adjustment
-            # z_status = "HOLD"
-        elif error > 0:  # Need to move downward (more negative)
-            next_z = current_z - z_step_size
-            # z_status = "DESCEND"
-        else:  # Need to move upward (less negative)
-            next_z = current_z + z_step_size
-            # z_status = "ASCEND"
-
-        # Publish setpoint (all FRD)
-        trajectory_msg = TrajectorySetpoint()
-        trajectory_msg.position = [next_x, next_y, next_z]
-        trajectory_msg.yaw = yaw
-        self.trajectory_setpoint_publisher.publish(trajectory_msg)
-
-        # # Enhanced logging
         # self.get_logger().info(
-        #     f"Movement: XY@{speed:.1f}m/s | Z@{vertical_speed:.1f}m/s | "
-        #     f"Status: {z_status} | "
-        #     f"FRD_Z: {current_z:.1f}→{next_z:.1f} | "
-        #     f"LiDAR: {abs(current_lidar_z):.1f}m→{abs(z):.1f}m AGL"
+        #     f"\ndx = {dx}, \ndy = {dy}, \ndz = {dz}, \nnext_x = {next_x}, \nnext_y = {next_y}, \nnext_z = {next_z}"
         # )
 
-    # def publish_trajectory_setpoint(self, x, y, z, yaw, speed=4.0):
-    #     """
-    #     Publishes a trajectory setpoint while ensuring correct handling of ENU (East-North-Up) 
-    #     and FRD (Forward-Right-Down) coordinate frames.
-    #     """
-
-    #     target_z = z
-    #     current_z = self.current_position[2]
-
-    #     current_x = self.current_position[0]  # FRD X
-    #     current_y = self.current_position[1]  # FRD Y
-
-    #     # Compute direction vector in FRD
-    #     dx = x - current_x
-    #     dy = y - current_y
-    #     dz = target_z - current_z  # Ensure FRD handling
-
-    #     distance = (dx**2 + dy**2 + dz**2)**0.5
-
-    #     if distance < 0.1:  # Reached target (tolerance in meters)
-    #         next_x, next_y, next_z = x, y, target_z
-    #     else:
-    #         # Normalize and scale by speed (10Hz assumed)
-    #         step = min(speed * 0.1, distance)
-    #         next_x = current_x + (dx / distance) * step
-    #         next_y = current_y + (dy / distance) * step
-    #         next_z = current_z + (dz / distance) * step  # FRD Z handled correctly
-
-    #     # self.get_logger().info(
-    #     #     f"\ndx = {dx}, \ndy = {dy}, \ndz = {dz}, \nnext_x = {next_x}, \nnext_y = {next_y}, \nnext_z = {next_z}"
-    #     # )
-
-    #     # Publish setpoint (FRD frame)
-    #     trajectory_msg = TrajectorySetpoint()
-    #     trajectory_msg.position = [next_x, next_y, next_z]  # Ensure FRD compliance
-    #     trajectory_msg.yaw = yaw
-    #     self.trajectory_setpoint_publisher.publish(trajectory_msg)
+        # Publish setpoint (FRD frame)
+        trajectory_msg = TrajectorySetpoint()
+        trajectory_msg.position = [next_x, next_y, next_z]  # Ensure FRD compliance
+        trajectory_msg.yaw = yaw
+        self.trajectory_setpoint_publisher.publish(trajectory_msg)
 
     def publish_vehicle_command(self, command, param1=0.0, param2=0.0, param3=0.0):
         """Publish a VehicleCommand."""
@@ -637,8 +582,6 @@ class ZDCommNode(Node):
                     self.waypoint_home[1] = self.origin_position[1]
 
                     self.lidar_ground_level = self.above_ground_altitude
-                    self.origin_position[2] = self.lidar_ground_level
-
                     self.get_logger().info(f"origin=({self.origin_position[0]}, {self.origin_position[1]}, {self.origin_position[2]}, yaw = {math.degrees(self.current_yaw)})")
 
                     self.get_logger().info(f"\norigin above ground altitude = {self.lidar_ground_level}")
@@ -650,7 +593,7 @@ class ZDCommNode(Node):
                         self.loop_once = False
             else:
                 pass
-        
+
 
         elif self.state == "ARMING":
             if not self.loop_once:
@@ -663,15 +606,35 @@ class ZDCommNode(Node):
             elif self.hover_start_time is None:
                 self.hover_start_time = time.time()
             elif time.time() - self.hover_start_time >= 10.0:
-                self.state = "OFFBOARDTAKEOFF"
+                self.state = "ANCHORING"
                 self.loop_once = False
-                self.hover_start_time = None
-                # self.samples = []
-                # self.get_logger().info("Takeoff done! Collecting data...")
+                self.hover_start_time = time.time()
+                self.samples = []
+                self.get_logger().info("Takeoff done! Collecting data...")
                 self.anchor_position[3] = self.anchor_position[3] + math.radians(90)  # right turn 90 deg (cw) facing solar panel
+
+
+        elif self.state == "ANCHORING":
+            if time.time() - self.hover_start_time < self.collection_duration:
+                self.samples.append((self.current_position[2], self.above_ground_altitude))
+                self.get_logger().info(f"Collecting data... {len(self.samples)} samples")
+            else:
+                self.state = "OFFBOARDTAKEOFF"
+                self.hover_start_time = None
+                # Compute ground_z after collecting enough samples
+                odom_z_values, lidar_z_values = zip(*self.samples)
+                
+                # Compute filtered values using median (robust to noise)
+                median_odom_z = np.median(odom_z_values)
+                median_lidar_z = np.median(lidar_z_values)
+                
+                # Derive stable ground_z
+                self.origin_position[2] = round(median_odom_z - (median_lidar_z - self.lidar_ground_level), 1)
+                self.get_logger().info(f"Derived origin=({self.origin_position[0]}, {self.origin_position[1]}, {self.origin_position[2]})")
                 self.anchor_position[2] = self.origin_position[2]
                 self.waypoint_solar_panel[2] = self.origin_position[2] + self.search_altitude
                 self.waypoint_home[2] = self.origin_position[2] + self.search_altitude
+
 
         elif self.state == "OFFBOARDTAKEOFF":
             if not self.current_mode == 14:
@@ -686,7 +649,7 @@ class ZDCommNode(Node):
                     takeoff_altitude = self.search_altitude # waypoint to solar panel (return robot)
                 z = self.origin_position[2] + takeoff_altitude
 
-                self.get_logger().info(f"Current odometry z: {self.above_ground_altitude} Target odometery z: {z}m")
+                self.get_logger().info(f"Current odometry z: {self.current_position[2]} Target odometery z: {z}m")
                 self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=z, yaw=self.anchor_position[3])
 
             if self.service_mode == 'D':
@@ -699,7 +662,7 @@ class ZDCommNode(Node):
             self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=z, yaw=self.anchor_position[3])
             
             
-            if abs(self.above_ground_altitude - z) <= 0.2:  # Allow small tolerance
+            if abs(self.current_position[2] - z) <= 0.2:  # Allow small tolerance
                 isgood = True
             else:
                 isgood = False
@@ -709,7 +672,7 @@ class ZDCommNode(Node):
                 self.loop_once = False
                 # if self.service_mode == "R":
                 #     self.anchor_position[3] = self.anchor_position[3] + math.radians(90)
-                
+
 
         elif self.state == "HOVER":
             if not self.loop_once:
@@ -753,9 +716,9 @@ class ZDCommNode(Node):
                 self.loop_once = True
                 self.get_logger().info("Initiate Phase 1 Descent.")
                 z = self.origin_position[2] + self.pre_home_descend_altitude
-                self.get_logger().info(f"Current altitude: {self.above_ground_altitude} Target altitude: {z}m")
+                self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {z}m")
             z = self.origin_position[2] + self.pre_home_descend_altitude
-            if self.above_ground_altitude - z >= -0.1:
+            if self.current_position[2] - z >= -0.1:
                 self.state = "CUSTOM_PRECISION_DESCEND"
                 self.loop_once = False
             self.publish_offboard_control_mode()
@@ -791,12 +754,11 @@ class ZDCommNode(Node):
                 if not self.aruco_descend:
                     self.anchor_position[0] = self.current_position[0]
                     self.anchor_position[1] = self.current_position[1]
-                    # self.anchor_position[2] = self.current_position[2]
-                    self.anchor_position[2] = self.above_ground_altitude
+                    self.anchor_position[2] = self.current_position[2]
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
                     self.publish_offboard_control_mode()
                     self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.anchor_position[2], yaw=self.anchor_position[3])
-                    self.get_logger().info(f"Current altitude: {self.above_ground_altitude} Target altitude: {self.anchor_position[2]}m")
+                    self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {self.anchor_position[2]}m")
                 self.loop_once = True
                 self.hover_start_time = time.time()
                 if not self.gripper_gripped:
@@ -821,8 +783,7 @@ class ZDCommNode(Node):
             elif time.time() - self.hover_start_time >= 3.0:
                 self.anchor_position[0] = self.current_position[0]
                 self.anchor_position[1] = self.current_position[1]
-                # self.anchor_position[2] = self.current_position[2]
-                self.anchor_position[2] = self.above_ground_altitude
+                self.anchor_position[2] = self.current_position[2]
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
                 self.publish_offboard_control_mode()
                 self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.anchor_position[2], yaw=self.anchor_position[3])  # should I use offboard?
@@ -834,6 +795,7 @@ class ZDCommNode(Node):
             self.publish_offboard_control_mode()
             self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.anchor_position[2], yaw=self.anchor_position[3])
 
+
         elif self.state == "ASCEND":
             self.publish_offboard_control_mode()
             if self.drone_return and self.waypoint == "HOME":
@@ -843,12 +805,12 @@ class ZDCommNode(Node):
             z = self.origin_position[2] + takeoff_altitude
             # self.get_logger().info(f"Current: {self.current_position[2]} Target: {takeoff_altitude}")
             self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=z, yaw=self.anchor_position[3])  # Ascend to takeoff altitude
-            if abs(self.above_ground_altitude - z) <= 1.5:
+            if abs(self.current_position[2] - z) <= 1.5:
                 if not self.loop_once:
                     if self.drone_return and self.waypoint == "HOME":
                         self.anchor_position[3] = self.anchor_position[3] - math.radians(90)
                     self.loop_once = True
-            if abs(self.above_ground_altitude - z) <= 0.2:  # Allow small tolerance
+            if abs(self.current_position[2] - z) <= 0.2:  # Allow small tolerance
                 isgood = True
             else:
                 isgood = False
@@ -892,7 +854,7 @@ class ZDCommNode(Node):
                 self.loop_once = True
                 self.waypoint = "SOLAR PANEL"
                 self.get_logger().info("Initiate waypoint to Solar Panel")
-                self.get_logger().info(f"Current altitude: {self.above_ground_altitude} Target altitude: {self.anchor_position[2]}m")
+                self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {self.anchor_position[2]}m")
             
             self.publish_trajectory_setpoint(x=self.waypoint_solar_panel[0], y=self.waypoint_solar_panel[1], z=self.waypoint_solar_panel[2], yaw=self.anchor_position[3])
             self.publish_offboard_control_mode()
@@ -986,7 +948,7 @@ class ZDCommNode(Node):
                 self.get_logger().info("Holding at deployment altitude.")
 
             # Compute target z to maintain gradual descent and corrections
-            z = self.above_ground_altitude + altitude_difference  
+            z = self.current_position[2] + altitude_difference  
 
             # Publish trajectory setpoint
             self.publish_trajectory_setpoint(x=self.anchor_position[0], 
@@ -1011,7 +973,7 @@ class ZDCommNode(Node):
             if not self.loop_once:
                 self.loop_once = True
                 self.get_logger().info("Waypoint to Home")
-                self.get_logger().info(f"Current altitude: {self.above_ground_altitude} Target altitude: {self.waypoint_home[2]}m")
+                self.get_logger().info(f"Current altitude: {self.current_position[2]} Target altitude: {self.waypoint_home[2]}m")
             self.publish_offboard_control_mode()
             self.publish_trajectory_setpoint(x=self.waypoint_home[0], y=self.waypoint_home[1], z=self.waypoint_home[2], yaw = self.anchor_position[3])
             
@@ -1027,7 +989,7 @@ class ZDCommNode(Node):
                         
                         
         elif self.state == "COMPLETE":
-            if abs(self.above_ground_altitude - self.origin_position[2]) <= 0.5:
+            if abs(self.current_position[2] - self.origin_position[2]) <= 0.5:
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LAND)  # Land
                 if not self.armed:
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LOITER)  # Loiter
