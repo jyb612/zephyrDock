@@ -452,6 +452,11 @@ class ZDCommNode(Node):
             #     f"LiDAR: {abs(current_lidar_z):.1f}m→{abs(z):.1f}m AGL"
             # )
         else:
+            trajectory_msg = TrajectorySetpoint()
+            trajectory_msg.position = [current_x,current_y,current_z]
+            trajectory_msg.yaw = yaw
+            self.trajectory_setpoint_publisher.publish(trajectory_msg)
+
             self.get_logger().info(f"target position exceed limit\ntarget:({x},{y},{z}), current({current_x},{current_y},{current_z})")  
 
     # def publish_trajectory_setpoint(self, x, y, z, yaw, speed=4.0):
