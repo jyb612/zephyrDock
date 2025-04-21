@@ -193,26 +193,26 @@ class ZDLoggingNode(Node):
     #         self.custom_mode_done,          # custom mode status (bool)
     #     ])
 
-    def quaternion_to_euler(self, q):
-        """Convert quaternion to Euler angles (roll, pitch, yaw)"""
-        # Roll (x-axis rotation)
-        sinr_cosp = 2 * (q[0] * q[1] + q[2] * q[3])
-        cosr_cosp = 1 - 2 * (q[1] * q[1] + q[2] * q[2])
-        roll = np.arctan2(sinr_cosp, cosr_cosp)
+    # def quaternion_to_euler(self, q):
+    #     """Convert quaternion to Euler angles (roll, pitch, yaw)"""
+    #     # Roll (x-axis rotation)
+    #     sinr_cosp = 2 * (q[0] * q[1] + q[2] * q[3])
+    #     cosr_cosp = 1 - 2 * (q[1] * q[1] + q[2] * q[2])
+    #     roll = np.arctan2(sinr_cosp, cosr_cosp)
 
-        # Pitch (y-axis rotation)
-        sinp = 2 * (q[0] * q[2] - q[3] * q[1])
-        if abs(sinp) >= 1:
-            pitch = np.copysign(np.pi / 2, sinp)  # Use 90 degrees if out of range
-        else:
-            pitch = np.arcsin(sinp)
+    #     # Pitch (y-axis rotation)
+    #     sinp = 2 * (q[0] * q[2] - q[3] * q[1])
+    #     if abs(sinp) >= 1:
+    #         pitch = np.copysign(np.pi / 2, sinp)  # Use 90 degrees if out of range
+    #     else:
+    #         pitch = np.arcsin(sinp)
 
-        # Yaw (z-axis rotation)
-        siny_cosp = 2 * (q[0] * q[3] + q[1] * q[2])
-        cosy_cosp = 1 - 2 * (q[2] * q[2] + q[3] * q[3])
-        yaw = np.arctan2(siny_cosp, cosy_cosp)
+    #     # Yaw (z-axis rotation)
+    #     siny_cosp = 2 * (q[0] * q[3] + q[1] * q[2])
+    #     cosy_cosp = 1 - 2 * (q[2] * q[2] + q[3] * q[3])
+    #     yaw = np.arctan2(siny_cosp, cosy_cosp)
 
-        return roll, pitch, yaw
+    #     return roll, pitch, yaw
 
     def vehicle_status_callback(self, msg):
         """Callback to update the current mode."""
@@ -273,7 +273,10 @@ class ZDLoggingNode(Node):
     def trajectory_setpoint_callback(self, msg):
         """Callback to update the current position."""
         # self.get_logger().info("trajectory setpoint yes")
-
+        self.velocity[0] = float(msg.velocity[0])
+        self.velocity[1] = float(msg.velocity[1])
+        self.velocity[2] = float(msg.velocity[2])
+        self.velocity[3] = float(msg.yawspeed)
         self.trajectory_setpoint[3] = float(msg.yaw)
     
     def setpoint_logger_callback(self, msg):
