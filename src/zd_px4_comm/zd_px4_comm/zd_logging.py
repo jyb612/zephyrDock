@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+from geometry_msgs.msg import Point
 from px4_msgs.msg import VehicleCommand, OffboardControlMode, TrajectorySetpoint, VehicleLocalPosition, VehicleStatus
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 import time
@@ -43,6 +44,7 @@ class ZDLoggingNode(Node):
         self.create_subscription(Int32, '/aruco_id', self.aruco_id_callback, critical_qos)
         self.create_subscription(Int32, '/servo_command', self.servo_command_callback, critical_qos)
         self.create_subscription(Bool, '/is_active_cam_color', self.is_active_cam_color_callback, critical_qos)
+        self.create_subscription(Point, '/setpoint_logger', self.setpoint_logger_callback, critical_qos)
 
         # self.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.odometry_callback, px4_qos)
         # self.create_subscription(VehicleStatus, '/fmu/out/vehicle_status', self.vehicle_status_callback, px4_qos)
@@ -57,6 +59,7 @@ class ZDLoggingNode(Node):
 
         self.current_position = [0.0, 0.0, 0.0, 0.0]
         self.trajectory_setpoint = [0.0, 0.0, 0.0, 0.0]
+        self.velocity = [0.0, 0.0, 0.0, 0.0]
         self.above_ground_altitude = None  # To store the current altitude
         self.aruco_id = 0
         self.current_mode = None
@@ -82,7 +85,11 @@ class ZDLoggingNode(Node):
                                    'traj_x', 
                                    'traj_y', 
                                    'traj_z', 
-                                   'traj_yaw', 
+                                   'traj_yaw',
+                                   'velo_x',
+                                   'velo,y',
+                                   'velo_z',
+                                   'velo_yaw', 
                                    'mode', 
                                    'arm', 
                                    'aruco id', 
@@ -95,6 +102,7 @@ class ZDLoggingNode(Node):
 
     # def isloaded_callback(self, msg):
     #     self.isloaded = True if msg.data else False
+  
     
     def local_position_callback(self, msg):
         """Callback to update the current position from vehicle_local_position."""
@@ -126,6 +134,10 @@ class ZDLoggingNode(Node):
             self.trajectory_setpoint[1],    # next trajectory setpoint odometry y (NED) (float32)
             self.trajectory_setpoint[2],    # next trajectory setpoint odometry z (NED) (float32)
             self.trajectory_setpoint[3],    # next trajectory setpoint yaw (float32)
+            self.velocity[0],               # vx
+            self.velocity[1],               # vy
+            self.velocity[2],               # vz
+            self.velocity[3],               # yawspeed
             self.current_mode,              # current nav_state (int)
             self.armed,                     # arm state (bool)
             self.aruco_id,                  # current target ArUco marker id (int)
@@ -262,12 +274,13 @@ class ZDLoggingNode(Node):
         """Callback to update the current position."""
         # self.get_logger().info("trajectory setpoint yes")
 
-        self.trajectory_setpoint = [
-            float(msg.position[0]),  # X in NED
-            float(msg.position[1]),  # Y in NED
-            float(msg.position[2]),  # Z in NED
-            float(msg.yaw),
-        ]
+        self.trajectory_setpoint[3] = float(msg.yaw)
+    
+    def setpoint_logger_callback(self, msg):
+        self.trajectory_setpoint[0] = msg.x
+        self.trajectory_setpoint[1] = msg.y
+        self.trajectory_setpoint[2] = msg.z
+        
 
 
 def main(args=None):

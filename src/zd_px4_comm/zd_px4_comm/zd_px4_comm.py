@@ -3,6 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from px4_msgs.msg import VehicleCommand, OffboardControlMode, TrajectorySetpoint, VehicleLocalPosition, VehicleStatus
+from geometry_msgs.msg import Point
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 import time
 from std_msgs.msg import Int32, Bool, Float32, Float32MultiArray  # For servo command
@@ -73,6 +74,8 @@ class ZDCommNode(Node):
         self.aruco_id_publisher = self.create_publisher(Int32, '/aruco_id', critical_qos)
         self.marker_size_publisher = self.create_publisher(Float32, '/marker_size', critical_qos)
         self.is_active_cam_color_publisher = self.create_publisher(Bool, '/is_active_cam_color', critical_qos)
+        self.setpoint_logger_publisher = self.create_publisher(Point, '/setpoint_logger', critical_qos)
+
         
         # # Define QoS profile for PX4 compatibility
         # px4_besteffort_qos = QoSProfile(
@@ -491,6 +494,13 @@ class ZDCommNode(Node):
         dy = y - self.current_position[1]
         dz = z - current_lidar_z
         yaw_error = math.atan2(math.sin(yaw - current_yaw), math.cos(yaw - current_yaw))  # shortest angle
+
+        log_point = Point()
+        log_point.x = x
+        log_point.y = y
+        log_point.z = z
+        self.setpoint_logger_publisher.publish(log_point)
+
         
         if (abs(x-self.origin_position[0]) <= 7 and abs(y-self.origin_position[2]) <= 7 ):
 
@@ -1107,12 +1117,11 @@ class ZDCommNode(Node):
                         
                         
         elif self.state == "COMPLETE":
-            if abs(self.above_ground_altitude - self.origin_position[2]) <= 0.5:
-                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LAND)  # Land
-                if not self.armed:
-                    self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LOITER)  # Loiter
-                    self.get_logger().warn("Exiting Node...")
-                    self.running = False
+            self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LAND)  # Land
+            if not self.armed:
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LOITER)  # Loiter
+                self.get_logger().warn("Exiting Node...")
+                self.running = False
             # Do nothing, mission is complete
             pass
 

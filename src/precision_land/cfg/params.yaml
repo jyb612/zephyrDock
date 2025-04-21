@@ -12,7 +12,7 @@ precision_land:
     loaded_robot_z: 0.5   # should consider lidar gripper offset?
     loaded_land_z: 0.6
     inclined_angle: 0.0   # 20 deg 0.349
-    vel_tune: 0.5
+    vel_tune: 0.25
 
     # Offsets for color camera
     color_cam_gripper_offset_front: 0.175   # cam front gripper

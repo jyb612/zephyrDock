@@ -649,8 +649,8 @@
 			//  RCLCPP_INFO(_node.get_logger(), "Lower much");
 		}
 		 else if (_above_ground_altitude < _target_z - 0.02f) {
-			 // If too low, ascend slightly
-			 _trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_ascent_vel*_param_vel_tune), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
+			 // If too low, ascend slightly*2
+			 _trajectory_setpoint->update(Eigen::Vector3f(vel.x(), vel.y(), _param_ascent_vel*_param_vel_tune*2), std::nullopt, px4_ros2::quaternionToYaw(_tag.orientation));
 			//  RCLCPP_INFO(_node.get_logger(), "Lower little");
 		}
 		 else {
