@@ -20,7 +20,7 @@ class TFMiniLidarNode(Node):
 
         # Setup serial communication
         self.serial_port = serial.Serial("/dev/ttyUSB0", 115200, timeout=0.1)
-        self.timer = self.create_timer(0.1, self.get_tfmini_data)  # 10Hz polling rate
+        self.timer = self.create_timer(0.05, self.get_tfmini_data)  # 10Hz polling rate
 
     def get_tfmini_data(self):
         """ Reads data from TF Mini LiDAR and publishes distance and signal strength. """

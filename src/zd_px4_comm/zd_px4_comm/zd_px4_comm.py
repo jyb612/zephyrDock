@@ -217,7 +217,7 @@ class ZDCommNode(Node):
         self.running = True
 
         # Timer to control the state machine
-        self.timer = self.create_timer(0.1, self.timer_callback)  # 2Hz
+        self.timer = self.create_timer(0.05, self.timer_callback)  # 2Hz
 
         # # Create logs directory if needed
         # os.makedirs('logs', exist_ok=True)
@@ -492,7 +492,7 @@ class ZDCommNode(Node):
         dz = z - current_lidar_z
         yaw_error = math.atan2(math.sin(yaw - current_yaw), math.cos(yaw - current_yaw))  # shortest angle
         
-        if (abs(dx) <= 7 and abs(dy) <= 7 ):
+        if (abs(x-self.origin_position[0]) <= 7 and abs(y-self.origin_position[2]) <= 7 ):
 
             # Proportional gain
             p_gain = 1.2
@@ -531,8 +531,7 @@ class ZDCommNode(Node):
             trajectory_msg.yaw = yaw
             self.trajectory_setpoint_publisher.publish(trajectory_msg)
 
-            self.get_logger().info(f"target position exceed limit\ntarget:({x},{y},{z}), current({self.current_position[0]},{self.current_position[1]},{self.current_position[2]})")
-
+            self.get_logger().info(f"target position exceed limit\ntarget:({x},{y},{z}), current({self.current_position[0]},{self.current_position[1]},{current_lidar_z})")
     # def publish_trajectory_setpoint(self, x, y, z, yaw, speed=4.0):
     #     """
     #     Publishes a trajectory setpoint while ensuring correct handling of ENU (East-North-Up) 
@@ -710,7 +709,7 @@ class ZDCommNode(Node):
                     self.waypoint_solar_panel[0] = x
                     self.waypoint_solar_panel[1] = y
 
-                    self.get_logger().info(f"==ZephyrDock==\nsolar panel=({self.waypoint_solar_panel[0]}, {self.waypoint_solar_panel[1]}, {self.waypoint_solar_panel[2]})")
+                    self.get_logger().info(f"!==ZephyrDock==\nsolar panel=({self.waypoint_solar_panel[0]}, {self.waypoint_solar_panel[1]}, {self.waypoint_solar_panel[2]})")
                     
                     self.anchor_position[3] = self.current_yaw
                     # self.anchor_position[3] = self.current_euler[2]
