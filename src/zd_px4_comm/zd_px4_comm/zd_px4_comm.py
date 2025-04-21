@@ -184,7 +184,7 @@ class ZDCommNode(Node):
         self.ultrasonic_right_range34 = None
         self.aruco_id = 0
 
-        self.search_altitude = -4.0  # Takeoff altitude in NED (8 meters up)
+        self.search_altitude = -4.5  # Takeoff altitude in NED (8 meters up)
         self.pre_home_descend_altitude = -3.5
         self.deploy_altitude = -3.5
         self.waypoint_home = [0.0, 0.0, self.search_altitude]
@@ -195,9 +195,6 @@ class ZDCommNode(Node):
         self.hori_grip_height = None
         self.lidar_gripper_offset_front = -0.15      ## ATTENTION
         self.z_offset = -0.5
-
-        self.samples = []
-        self.collection_duration = 5.0 # 5 seconds of data collection
         self.lidar_ground_level = None
 
         self.waypoint = "HOME"
@@ -389,75 +386,152 @@ class ZDCommNode(Node):
         offboard_msg = OffboardControlMode()
         offboard_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         offboard_msg.position = True
-        offboard_msg.velocity = False
+        offboard_msg.velocity = True
         offboard_msg.acceleration = False
         offboard_msg.attitude = False
         offboard_msg.body_rate = False
         self.offboard_control_mode_publisher.publish(offboard_msg)
     
-    def publish_trajectory_setpoint(self, x, y, z, yaw, speed=4.0):
-        """
-        Modified version that:
-        - Uses speed parameter for both XY and Z movements
-        - Adjusts Z incrementally based on speed
-        - Uses LiDAR only for validation (never publishes directly)
-        - Maintains FRD coordinate convention
-        """
-        # Current state (all in FRD frame)
-        current_x = self.current_position[0]
-        current_y = self.current_position[1]
-        current_z = self.current_position[2]  # Negative down
-        current_lidar_z = self.above_ground_altitude  # Already in FRD (negative)
+    # def publish_trajectory_setpoint(self, x, y, z, yaw, speed=4.0):
+    #     """
+    #     Modified version that:
+    #     - Uses speed parameter for both XY and Z movements
+    #     - Adjusts Z incrementally based on speed
+    #     - Uses LiDAR only for validation (never publishes directly)
+    #     - Maintains FRD coordinate convention
+    #     """
+    #     # Current state (all in FRD frame)
+    #     current_x = self.current_position[0]
+    #     current_y = self.current_position[1]
+    #     current_z = self.current_position[2]  # Negative down
+    #     current_lidar_z = self.above_ground_altitude  # Already in FRD (negative)
 
-        if (abs(x-current_x) <= 7 and abs(y-current_y) <= 7 ):
+    #     if (abs(x-current_x) <= 7 and abs(y-current_y) <= 7 ):
 
-            # XY movement (using speed parameter)
-            dx = x - current_x
-            dy = y - current_y
-            distance_xy = (dx**2 + dy**2)**0.5
+    #         # XY movement (using speed parameter)
+    #         dx = x - current_x
+    #         dy = y - current_y
+    #         distance_xy = (dx**2 + dy**2)**0.5
             
-            if distance_xy < 0.1:  # XY reached
-                next_x, next_y = x, y
-            else:
-                step_xy = min(speed * 0.1, distance_xy)  # 10Hz control loop
-                next_x = current_x + (dx/distance_xy)*step_xy
-                next_y = current_y + (dy/distance_xy)*step_xy
+    #         if distance_xy < 0.1:  # XY reached
+    #             next_x, next_y = x, y
+    #         else:
+    #             step_xy = min(speed * 0.1, distance_xy)  # 10Hz control loop
+    #             next_x = current_x + (dx/distance_xy)*step_xy
+    #             next_y = current_y + (dy/distance_xy)*step_xy
 
-            # Z adjustment (using speed parameter scaled for vertical movement)
-            error = z - current_lidar_z  # Both negative values
-            vertical_speed = speed * 0.5  # Reduce speed for vertical (adjust factor as needed)
-            z_step_size = vertical_speed * 0.1  # 10Hz control loop
+    #         # # Z adjustment (using speed parameter scaled for vertical movement)
+    #         # error = z - current_lidar_z  # Both negative values
+    #         # vertical_speed = speed # Reduce speed for vertical (adjust factor as needed)
+    #         # z_step_size = vertical_speed * 0.1  # 10Hz control loop
 
-            if abs(error) < 0.15:  # Within 15cm tolerance
-                next_z = current_z  # Freeze Z adjustment
-                # z_status = "HOLD"
-            elif error > 0:  # Need to move downward (more negative)
-                next_z = current_z - z_step_size
-                # z_status = "DESCEND"
-            else:  # Need to move upward (less negative)
-                next_z = current_z + z_step_size
-                # z_status = "ASCEND"
+    #         # if abs(error) < 0.1:  # Within 15cm tolerance
+    #         #     next_z = current_z  # Freeze Z adjustment
+    #         #     z_status = "HOLD"
+    #         # elif error > 0:  # Need to move downward (more negative)
+    #         #     next_z = current_z + z_step_size
+    #         #     z_status = "DESCEND"
+    #         # else:  # Need to move upward (less negative)
+    #         #     next_z = current_z - z_step_size
+    #         #     z_status = "ASCEND"
 
-            # Publish setpoint (all FRD)
+    #         # Current and target Z values in FRD frame:
+    #         # current_z = +5.0 means 5m downward (below origin)
+    #         # target_z = +3.0 means 3m downward (want to ascend by 2m)
+
+    #         Z_P_GAIN = 0.5
+    #         error = z - current_lidar_z  # Both in FRD
+
+    #         if abs(error) < 0.1:
+    #             # Within tolerance → HOLD
+    #             p_output = 0.0
+    #             next_z = current_z
+    #             z_status = "HOLD"
+    #         else:
+    #             # P-control output
+    #             p_output = error * Z_P_GAIN
+
+    #             # Clamp to max step size (speed=4m/s → max_z_step=0.4m per 10Hz)
+    #             max_z_step = speed * 0.1
+    #             p_output = max(-max_z_step, min(max_z_step, p_output))
+
+    #             # Apply movement (FRD convention):
+    #             next_z = current_z + p_output
+
+    #             z_status = "DESCEND (DOWNWARD +Z)" if p_output > 0 else "ASCEND (UPWARD -Z)"
+
+
+    #         # Publish setpoint (all FRD)
+    #         trajectory_msg = TrajectorySetpoint()
+    #         trajectory_msg.position = [next_x, next_y, next_z]
+    #         trajectory_msg.yaw = yaw
+    #         self.trajectory_setpoint_publisher.publish(trajectory_msg)
+
+    #         # # Enhanced logging
+    #         self.get_logger().info(
+    #             f"Z Control: Target={z:.1f}m | Current={current_lidar_z:.1f}m | "
+    #             f"Error={error:.2f}m | Output={p_output:.2f}m\n"
+    #             f"Movement: {z_status} | New Z={next_z:.1f}m (FRD)"
+    #         )
+    #     else:
+    #         trajectory_msg = TrajectorySetpoint()
+    #         trajectory_msg.position = [current_x,current_y,current_z]
+    #         trajectory_msg.yaw = yaw
+    #         self.trajectory_setpoint_publisher.publish(trajectory_msg)
+
+    #         self.get_logger().info(f"target position exceed limit\ntarget:({x},{y},{z}), current({current_x},{current_y},{current_z})")  
+
+    def publish_trajectory_setpoint(self, x, y, z, yaw, speed=0.5):
+        # Position error
+        
+        current_lidar_z = self.above_ground_altitude
+        current_yaw = self.current_yaw  # You must track this from odometry or estimator
+
+        dx = x - self.current_position[0]
+        dy = y - self.current_position[1]
+        dz = z - current_lidar_z
+        yaw_error = math.atan2(math.sin(yaw - current_yaw), math.cos(yaw - current_yaw))  # shortest angle
+        
+        if (abs(dx) <= 7 and abs(dy) <= 7 ):
+
+            # Proportional gain
+            p_gain = 1.2
+            yaw_p_gain = 1.5
+
+            # Velocity calculation (P control)
+            velocity_x = dx * p_gain
+            velocity_y = dy * p_gain
+            velocity_z = dz * p_gain
+
+            # Clamp velocities
+            velocity_x = max(min(velocity_x, speed), -speed)
+            velocity_y = max(min(velocity_y, speed), -speed)
+            velocity_z = max(min(velocity_z, speed), -speed)
+
+            # Yaw control
+            
+            yaw_speed = yaw_error * yaw_p_gain
+            yaw_speed = max(min(yaw_speed, speed), -speed)
+
+            # Prepare trajectory setpoint message
             trajectory_msg = TrajectorySetpoint()
-            trajectory_msg.position = [next_x, next_y, next_z]
-            trajectory_msg.yaw = yaw
-            self.trajectory_setpoint_publisher.publish(trajectory_msg)
+            trajectory_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
-            # # Enhanced logging
-            # self.get_logger().info(
-            #     f"Movement: XY@{speed:.1f}m/s | Z@{vertical_speed:.1f}m/s | "
-            #     f"Status: {z_status} | "
-            #     f"FRD_Z: {current_z:.1f}→{next_z:.1f} | "
-            #     f"LiDAR: {abs(current_lidar_z):.1f}m→{abs(z):.1f}m AGL"
-            # )
+            # Use pure velocity control (position = NaN)
+            trajectory_msg.position = [math.nan, math.nan, math.nan]
+            trajectory_msg.velocity = [velocity_x, velocity_y, velocity_z]
+            trajectory_msg.yaw = math.nan  # PX4 ignores this if NaN
+            trajectory_msg.yawspeed = yaw_speed
+
+            # Publish the message
+            self.trajectory_setpoint_publisher.publish(trajectory_msg)
         else:
             trajectory_msg = TrajectorySetpoint()
-            trajectory_msg.position = [current_x,current_y,current_z]
+            trajectory_msg.position = [self.current_position[0],self.current_position[1],self.current_position[2]]
             trajectory_msg.yaw = yaw
             self.trajectory_setpoint_publisher.publish(trajectory_msg)
 
-            self.get_logger().info(f"target position exceed limit\ntarget:({x},{y},{z}), current({current_x},{current_y},{current_z})")  
+            self.get_logger().info(f"target position exceed limit\ntarget:({x},{y},{z}), current({self.current_position[0]},{self.current_position[1]},{self.current_position[2]})")
 
     # def publish_trajectory_setpoint(self, x, y, z, yaw, speed=4.0):
     #     """
@@ -675,8 +749,6 @@ class ZDCommNode(Node):
                 self.state = "OFFBOARDTAKEOFF"
                 self.loop_once = False
                 self.hover_start_time = None
-                # self.samples = []
-                # self.get_logger().info("Takeoff done! Collecting data...")
                 self.anchor_position[3] = self.anchor_position[3] + math.radians(90)  # right turn 90 deg (cw) facing solar panel
                 self.anchor_position[2] = self.origin_position[2]
                 self.waypoint_solar_panel[2] = self.origin_position[2] + self.search_altitude
