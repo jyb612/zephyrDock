@@ -1,5 +1,7 @@
 # ZephyrDock (Aerial Attach-Detach and Precision Deployment System)
 
+![](zdlogo.png)
+
 This project builds upon the excellent work by ARK Electronics' "ROS2 & PX4 Precision Landing with ArUco Markers" implementation. We've extended their foundation with custom modifications including a state manager and specialized versions of the aruco tracker and precision landing packages for our specific use case.
 
 Key Modifications:
