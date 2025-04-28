@@ -9,6 +9,9 @@ Key Modifications:
 * Modified aruco_tracker package for dynamic marker id switching
 * Modified precision_land package for hovering and customize search pattern, pid tuned result, and algorithm change for state switching justification
 * Adapted the system for actual hardware interface (LiDAR TF-Mini, servo SM-80BL ModbusRTU, ultrasonic sensor GYUS42V2, etc.)
+* Added flight review python files 
+  python ./flight_pid_review.py        // for pid logging in /logs,  created automatically for each precision landing mode change
+  python ./history_data_analysis.py    // for zd_logging in /logs,  created manually via running zd_logging node prior to flight (ros2 run zd_px4_comm zd_logging)
 
 ## Original Project Credit
 The core functionality and initial setup process is based on ARK Electronics' open-source project:
