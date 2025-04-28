@@ -10,7 +10,11 @@ Key Modifications:
 
 ## Original Project Credit
 The core functionality and initial setup process is based on ARK Electronics' open-source project:
-###ARK Electronics Tracktor Beam
+ARK Electronics Tracktor Beam
+
+## Questions
+Message Chua Jun Yan on LinkedIn for questions or email me at chua.junyan0612@gmail.com
+
 
 ![](logo.jpeg)
 
