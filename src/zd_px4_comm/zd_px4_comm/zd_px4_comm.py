@@ -730,6 +730,9 @@ class ZDCommNode(Node):
 
                     self.lidar_ground_level = self.above_ground_altitude
                     self.origin_position[2] = self.lidar_ground_level
+                    self.anchor_position[2] = self.origin_position[2]
+                    self.waypoint_solar_panel[2] = self.origin_position[2] + self.search_altitude
+                    self.waypoint_home[2] = self.origin_position[2] + self.search_altitude
 
                     self.get_logger().info(f"origin=({self.origin_position[0]}, {self.origin_position[1]}, {self.origin_position[2]}, yaw = {math.degrees(self.current_yaw)})")
 
@@ -737,6 +740,10 @@ class ZDCommNode(Node):
                     self.service_mode = input("Input 'd' to deploy, 'r' to return robot: ").upper()
 
                     if self.service_mode == 'D' or self.service_mode == 'R':
+                        if self.service_mode == 'D':
+                            self.get_logger().info(f"Deploy mode selected.")
+                        else:
+                            self.get_logger().info(f"Return mode selected.")
                         self.state = "ARMING"
                         self.hover_start_time = None
                         self.loop_once = False
@@ -747,7 +754,7 @@ class ZDCommNode(Node):
         elif self.state == "ARMING":
             if not self.loop_once:
                 if (self.current_mode != 4 and self.current_mode != 18 and self.current_mode != 5):
-                    self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 4.0, 3.0)
+                    self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LOITER)
                 self.loop_once = True
             if not self.armed:              # ensure arm and take off (repeatedly send signal)
                 self.arm_drone()
@@ -758,14 +765,12 @@ class ZDCommNode(Node):
                 self.state = "OFFBOARDTAKEOFF"
                 self.loop_once = False
                 self.hover_start_time = None
-                self.anchor_position[3] = self.anchor_position[3] + math.radians(90)  # right turn 90 deg (cw) facing solar panel
-                self.anchor_position[2] = self.origin_position[2]
-                self.waypoint_solar_panel[2] = self.origin_position[2] + self.search_altitude
-                self.waypoint_home[2] = self.origin_position[2] + self.search_altitude
+                self.anchor_position[3] = self.anchor_position[3] + math.radians(90)  # right turn 90 deg (cw) facing solar panel 
+
 
         elif self.state == "OFFBOARDTAKEOFF":
-            if not self.current_mode == 14:
-                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)
+            # if not self.current_mode == 14:
+            #     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)
             if not self.loop_once:
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)
                 self.publish_offboard_control_mode()
@@ -777,7 +782,9 @@ class ZDCommNode(Node):
                 z = self.origin_position[2] + takeoff_altitude
 
                 self.get_logger().info(f"Current odometry z: {self.above_ground_altitude} Target odometery z: {z}m")
+                self.publish_offboard_control_mode()
                 self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=z, yaw=self.anchor_position[3])
+                
 
             if self.service_mode == 'D':
                 takeoff_altitude = self.pre_home_descend_altitude
@@ -819,7 +826,7 @@ class ZDCommNode(Node):
                 elif self.service_mode == "D":
                     self.state = "CUSTOM_PRECISION_DESCEND"
                     # self.publish_aruco_info(1)          # SIM
-                    # self.publish_aruco_info(3)        # ACTUAL
+                    self.publish_aruco_info(3)        # ACTUAL
                 elif self.service_mode == "R":
                     self.state = "WAYPOINT_SOLAR_PANEL"
                     self.publish_aruco_info(3)
@@ -982,8 +989,11 @@ class ZDCommNode(Node):
                 self.loop_once = True
                 self.waypoint = "SOLAR PANEL"
                 self.get_logger().info("Initiate waypoint to Solar Panel")
-                self.get_logger().info(f"Current altitude: {self.above_ground_altitude} Target altitude: {self.anchor_position[2]}m")
+                self.get_logger().info(f"Current pos: {self.current_position[0]}, {self.current_position[1]}, {self.above_ground_altitude} Target pos: {self.waypoint_solar_panel[0]}, {self.waypoint_solar_panel[1]}, {self.waypoint_solar_panel[2]}")
             
+            if (self.current_mode != 14 and self.current_mode != 18):
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
+
             self.publish_trajectory_setpoint(x=self.waypoint_solar_panel[0], y=self.waypoint_solar_panel[1], z=self.waypoint_solar_panel[2], yaw=self.anchor_position[3])
             self.publish_offboard_control_mode()
 
