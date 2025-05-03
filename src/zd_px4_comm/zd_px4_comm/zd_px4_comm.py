@@ -1117,11 +1117,12 @@ class ZDCommNode(Node):
                         
                         
         elif self.state == "COMPLETE":
-            self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LAND)  # Land
-            if not self.armed:
-                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LOITER)  # Loiter
-                self.get_logger().warn("Exiting Node...")
-                self.running = False
+            if abs(self.above_ground_altitude - self.lidar_ground_level) <= 0.5:
+                self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LAND)  # Land
+                if not self.armed:
+                    self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LOITER)  # Loiter
+                    self.get_logger().warn("Exiting Node...")
+                    self.running = False
             # Do nothing, mission is complete
             pass
 
