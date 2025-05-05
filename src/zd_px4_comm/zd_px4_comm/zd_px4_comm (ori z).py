@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+# # DISCLAIMER # #
+
+# JUST A BACKUP BEFORE SWITCHING TO VELOCITY-SETPOINT METHOD #
+# ALSO IT USES LOCAL ALTITUDE ESTIMATE INSTEAD OF DOWNWARD FACING LIDAR #
+
+
+
+
+
+
+
+
+
 
 import rclpy
 from rclpy.node import Node

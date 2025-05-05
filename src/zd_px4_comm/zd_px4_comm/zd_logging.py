@@ -1,3 +1,18 @@
+#!/usr/bin/env python3
+# # DISCLAIMER # #
+
+# FOR LOGGING, RUN BEFORE STATE MANAGER OR TOGETHER #
+# END AFTER DRONE LANDED #
+# MANUALLY #
+
+
+
+
+
+
+
+
+
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Point

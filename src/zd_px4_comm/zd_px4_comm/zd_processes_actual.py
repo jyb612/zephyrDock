@@ -1,5 +1,16 @@
 
 #!/usr/bin/env python3
+# # DISCLAIMER # #
+
+# THIS IS NODE / LAUNCH FILE TO RUN VIA TERMINAL FOR ACTUAL DRONE TEST #
+
+
+
+
+
+
+
+
 
 # Import the subprocess and time modules
 import subprocess

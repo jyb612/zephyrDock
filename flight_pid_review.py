@@ -1,3 +1,17 @@
+#!/usr/bin/env python3
+# # DISCLAIMER # #
+
+# USED TO REVIEW CUSTOM PRECISION DESCENT MODE PID PERFORMANCE #
+# LOG NAME IS pid_logging / pid_sim_logging IN /logs #
+# THERE'RE MULTIPLE VERSION BUT THIS IS THE LATEST FOR NOW #
+# ADJUST AS YOU PLEASE #
+
+
+
+
+
+
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -36,7 +50,9 @@ class PIDAnalyzer:
         self.tab_control = ttk.Notebook(self.main_frame)
         self.plot_tab = ttk.Frame(self.tab_control)
         self.metrics_tab = ttk.Frame(self.tab_control)
+        self.altitude_tab = ttk.Frame(self.tab_control)  # New tab for altitude data
         self.tab_control.add(self.plot_tab, text='Plots')
+        self.tab_control.add(self.altitude_tab, text='Altitude')  # Add the new tab
         self.tab_control.add(self.metrics_tab, text='Metrics')
         self.tab_control.pack(expand=1, fill="both")
         
@@ -49,7 +65,12 @@ class PIDAnalyzer:
         self.metrics_text = tk.Text(self.metrics_tab, wrap=tk.WORD)
         self.metrics_text.pack(fill=tk.BOTH, expand=True)
         
-        # Status bar
+        # Altitude tab content
+        self.altitude_fig = plt.Figure(figsize=(10, 6), dpi=100)
+        self.altitude_canvas = FigureCanvasTkAgg(self.altitude_fig, master=self.altitude_tab)
+        self.altitude_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        
+        # Status bar 
         self.status_var = tk.StringVar()
         self.status_var.set("Ready")
         self.status_bar = tk.Label(
@@ -102,8 +123,9 @@ class PIDAnalyzer:
         
         # Clear previous plots
         self.fig.clf()
+        self.altitude_fig.clf()
         
-        # Create subplots
+        # Create subplots for main performance plots
         gs = self.fig.add_gridspec(2, 2, wspace=0.3, hspace=0.4)
         ax1 = self.fig.add_subplot(gs[0, 0])
         ax2 = self.fig.add_subplot(gs[0, 1])
@@ -116,16 +138,47 @@ class PIDAnalyzer:
         self.plot_position_data(ax3, df, 'X')
         self.plot_position_data(ax4, df, 'Y')
         
+        # Plot altitude data in the new tab
+        self.plot_altitude_data(df)
+        
         # Calculate metrics
         metrics = self.calculate_metrics(df)
         
         # Update display
         self.canvas.draw()
+        self.altitude_canvas.draw()
         self.update_metrics(metrics)
         
-        # Save plot
+        # Save plots
         output_file = os.path.splitext(csv_file)[0] + '_analysis.png'
         self.fig.savefig(output_file, dpi=300, bbox_inches='tight')
+        
+        # Save altitude plot separately
+        altitude_file = os.path.splitext(csv_file)[0] + '_altitude.png'
+        self.altitude_fig.savefig(altitude_file, dpi=300, bbox_inches='tight')
+
+    def plot_altitude_data(self, df):
+        """Plot the altitude data (above_ground_z vs target_z)"""
+        ax = self.altitude_fig.add_subplot(111)
+        time = df['time_elapsed'].to_numpy()
+        actual_z = df['above_ground_z'].to_numpy()
+        target_z = df['target_z'].to_numpy()
+        
+        ax.plot(time, actual_z, 'b-', label='Actual Altitude')
+        ax.plot(time, target_z, 'r--', label='Target Altitude')
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Altitude (m)')
+        ax.set_title('Altitude Tracking Performance')
+        ax.legend()
+        ax.grid(True)
+        
+        # Calculate and display altitude metrics
+        z_error = actual_z - target_z
+        max_error = np.max(np.abs(z_error))
+        rms_error = np.sqrt(np.mean(z_error**2))
+        
+        ax.text(0.02, 0.95, f'Max Error: {max_error:.3f} m', transform=ax.transAxes)
+        ax.text(0.02, 0.90, f'RMS Error: {rms_error:.3f} m', transform=ax.transAxes)
 
     def plot_axis_data(self, ax, df, axis):
         time = df['time_elapsed'].to_numpy()
@@ -169,14 +222,25 @@ class PIDAnalyzer:
                 'rms_error': np.sqrt(np.mean(error**2)),
                 'settling_index': np.argmax(np.abs(error) < 0.05) / len(error) if any(np.abs(error) < 0.05) else None
             }
+        
+        # Add altitude metrics
+        z_error = df['above_ground_z'].to_numpy() - df['target_z'].to_numpy()
+        metrics['z'] = {
+            'final_error': z_error[-1],
+            'max_error': np.max(np.abs(z_error)),
+            'rms_error': np.sqrt(np.mean(z_error**2)),
+            'settling_index': np.argmax(np.abs(z_error) < 0.05) / len(z_error) if any(np.abs(z_error) < 0.05) else None
+        }
+        
         return metrics
 
     def update_metrics(self, metrics):
         self.metrics_text.delete(1.0, tk.END)
         
         text = "=== Performance Metrics ===\n\n"
-        for axis in ['x', 'y']:
-            text += f"{axis.upper()}-Axis:\n"
+        for axis in ['x', 'y', 'z']:
+            axis_name = 'Altitude' if axis == 'z' else f"{axis.upper()}-Axis"
+            text += f"{axis_name}:\n"
             text += f"  Final Error: {metrics[axis]['final_error']:.4f} m\n"
             text += f"  Max Error: {metrics[axis]['max_error']:.4f} m\n"
             text += f"  RMS Error: {metrics[axis]['rms_error']:.4f} m\n"

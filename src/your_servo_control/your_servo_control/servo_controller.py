@@ -1,3 +1,17 @@
+#!/usr/bin/env python
+# # DISCLAIMER # #
+
+# SUB SERVO COMMAND AND CONTROL THE SERVO #
+# THERE'S A LOT OF FEEDBACK AVAILABLE #
+# REFER TO THE MEMORY TABLE MODBUS RTU #
+
+
+
+
+
+
+
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Int32, Float32

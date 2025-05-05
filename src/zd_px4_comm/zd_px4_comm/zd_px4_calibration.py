@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+# # DISCLAIMER # #
+
+# THIS IS FOR INDEPENDENT ALGORITHM TESTING, ORIGINALLY NAMED CALIBRATION TO TEST X Y Z AND YAW #
+
+
+
+
+
+
+
+
 
 import rclpy
 from rclpy.node import Node

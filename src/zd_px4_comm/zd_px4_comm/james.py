@@ -1,3 +1,17 @@
+# # DISCLAIMER # #
+
+# THIS IS JAMES WAY TO USE OBSTACLE AVOIDANCE LIDAR FOR TRAJECTORY SETPOINT #
+# ACTUALLY REQUIRES INTEGRATION, HAVE THE LIDAR READING SUBSCRIBED, MAKESURE THE TRAJECTORY SETPOINT ONLY KEEP GOING WHEN IT IS SAFE"
+
+
+
+
+
+
+
+
+
+
 import rclpy
 from rclpy.node import Node
 from px4_msgs.msg import VehicleCommand, OffboardControlMode, TrajectorySetpoint, VehicleOdometry, VehicleStatus

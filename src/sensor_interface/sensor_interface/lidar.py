@@ -1,3 +1,15 @@
+#!/usr/bin/env python
+# # DISCLAIMER # #
+
+# OBTAIN LIDAR READING AND PUB #
+
+
+
+
+
+
+
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32

@@ -1,3 +1,9 @@
+# # DISCLAIMER # #
+
+# UNUSED #
+# ALREADY LAUNCH VIA zd_px4_comm #
+
+
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import ExecuteProcess

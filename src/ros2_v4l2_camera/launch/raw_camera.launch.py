@@ -1,3 +1,20 @@
+#!/usr/bin/env python
+# # DISCLAIMER # #
+
+# THIS LAUNCH BOTH CAMERA #
+# THE CAMERA 'video_device' NEEDS TO BE CHECKED IF REFERRING THE RIGHT ONE #
+# IMPORTANT #
+# MIGHT BE MISTAKEN AS DEPTH CAMERA, WHILE THESE ARE FOR AR0234 GLOBAL SHUTTER CAMERA #
+
+# CAMERA CALIBRATION FILE (.yaml) IN /calcam #
+
+
+
+
+
+
+
+
 from launch import LaunchDescription
 from launch_ros.actions import Node
 

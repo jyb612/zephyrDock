@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+# # DISCLAIMER # #
+
+# THIS IS THE MAIN NODE - STATE MANAGER TO RUN #
+
+
+
+
+
+
+
+
 
 import rclpy
 from rclpy.node import Node
@@ -13,7 +24,7 @@ import numpy as np
 # from datetime import datetime
 # import os
 
-MAIN_VEHICLE_MODE_OFFBOARD = 6.0         # Offboard param 1 = 1.0
+MAIN_VEHICLE_MODE_OFFBOARD = 6.0        # Offboard param 1 = 1.0
 
 SWAP_TO_SUB_VEHICLE_MODE = 4.0          # Auto  param 2
 SUB_VEHICLE_MODE_TAKEOFF = 2.0          # Takeoff       param3          param1 = 1.0 param2 = 4.0
@@ -21,9 +32,9 @@ SUB_VEHICLE_MODE_LOITER = 3.0           # Loiter (Hold) param3          param1 =
 SUB_VEHICLE_MODE_CUSTOM_MODE = 11.0     # External mode 1   param3      param1 = 1.0 param2 = 4.0
 SUB_VEHICLE_MODE_LAND = 6.0             # LAND   param3                 param1 = 1.0 param2 = 4.0
 
-RELEASE = 3072
+RELEASE = 3072                          # Servo position, it depends on the PET film stacking order and direction
 GRIP = 2048
-GRIP_STRONG = 1024
+GRIP_STRONG = 0                         # needed for actual robot (as long as it is using ball mount)
 
 
 class ZDCommNode(Node):
@@ -33,7 +44,7 @@ class ZDCommNode(Node):
         px4_qos = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
             history=QoSHistoryPolicy.KEEP_LAST,
-            depth=1
+            depth=1         # buffer
         )
 
         critical_qos = QoSProfile(
@@ -43,7 +54,7 @@ class ZDCommNode(Node):
         )
 
         sensor_qos = QoSProfile(
-            reliability=QoSReliabilityPolicy.BEST_EFFORT,  # Or RELIABLE if critical
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,  # Or RELIABLE if critical (HAVE TO BE MATCHED for sub and pub!!)
             history=QoSHistoryPolicy.KEEP_LAST,
             depth=5  # Moderate buffer for sensor data
         )
@@ -76,7 +87,7 @@ class ZDCommNode(Node):
         self.is_active_cam_color_publisher = self.create_publisher(Bool, '/is_active_cam_color', critical_qos)
         self.setpoint_logger_publisher = self.create_publisher(Point, '/setpoint_logger', critical_qos)
 
-        
+        # ==Just previous version of code==
         # # Define QoS profile for PX4 compatibility
         # px4_besteffort_qos = QoSProfile(
         #     reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -171,58 +182,82 @@ class ZDCommNode(Node):
         #     self.lidar_range_callback, 
         #     bool_qos
         # )
+        # ==Just previous version of code==
 
         # State variables
-        self.service_mode = None
+        self.service_mode = None    # Deploy / Return mode
 
-        self.current_position = [0.0, 0.0, 0.0]  # Current position in NED
-        self.anchor_position = [0.0, 0.0, 0.0, 0.0]
-        self.angular_velocity = [0.0, 0.0, 0.0]
-        self.current_yaw = None
-        # self.current_euler = [0.0, 0.0, 0.0] # roll, pitch, yaw (rad)
-        self.origin_position = [0.0, 0.0, 0.0]
-        self.above_ground_altitude = None  # To store the current altitude
-        self.solar_panel_angle_in_rad = 0.0
-        self.ultrasonic_left_range32 = None
-        self.ultrasonic_right_range34 = None
-        self.aruco_id = 0
+        self.current_position = [0.0, 0.0, 0.0]     # Current position in NED
+        self.anchor_position = [0.0, 0.0, 0.0, 0.0] # Anchor position for referencing in states when needed index 3 is yaw (rad)
+        self.angular_velocity = [0.0, 0.0, 0.0]     # roll pitch yaw angular velocity rad/s
+        self.current_yaw = None                     # yaw (rad)
+        # self.current_euler = [0.0, 0.0, 0.0]      # roll, pitch, yaw (rad) [outdated]
+        self.origin_position = [0.0, 0.0, 0.0]      # Origin position in NED
+        self.above_ground_altitude = None           # current LiDAR reading
+        self.solar_panel_angle_in_rad = 0.0         # solar panel angle in rad
+        # self.ultrasonic_left_range32 = None       # was used for aligning drone with solar panel via yaw adjustment
+        # self.ultrasonic_right_range34 = None      # due to ultrasonic sensor reading fluctuates, aborted
 
-        self.search_altitude = -4.5  # Takeoff altitude in NED (8 meters up)
-        self.pre_home_descend_altitude = -3.5
-        self.deploy_altitude = -3.5
-        self.waypoint_home = [0.0, 0.0, self.search_altitude]
-        self.waypoint_solar_panel = [0.0, 0.0, self.search_altitude]
-        self.waypoint_solar_panel_distance = 5.0
-        self.angular_velocity_threshold = 0.01  # Threshold for angular velocity (radians per second)
-        self.time_threshold = 3.0
-        self.hori_grip_height = None
-        self.lidar_gripper_offset_front = -0.15      ## ATTENTION
-        self.z_offset = -0.5
-        self.lidar_ground_level = None
+        self.aruco_id = 0                           # current targeted aruco id (4x4 0.14m, aruco tracking params.yaml needed to be set)
+                                                    # can use ros2 topic pub to switch the targeted aruco id for aruco tracking node dynamically
+                                                    # 0: drone home, 1: robot home, 2: home landmark (unused), 3: robot,... can add on
 
-        self.waypoint = "HOME"
-        self.current_mode = None  # Current flight mode
-        self.armed = False  # Armed state
-        self.custom_mode_done = False
+        self.search_altitude = -4.5                 # Takeoff altitude in NED (4.5 meters up)
+        self.pre_home_descend_altitude = -3.5       # Altitude that both robot home and drone home aruco marker can be recognised
+        self.deploy_altitude = None                 # calculated value for placing robot on solar panel, needs to play with offset during testing
+                                                    # refer to *deploy descend* state
+        self.z_offset = -0.5                        # offset for deploy descent (testing then insert offset to avoid collide, but gripper will not grip because too high)
 
-        self.aruco_descend = False
-        self.gripper_gripped = False 
-        self.loop_once = False 
-        self.drone_return = False 
-        self.is_active_cam_color = True
-        self.isloaded = False
-        self.gripper_retry = False
-        self.robot_return_flag = False
+
+        self.waypoint_home = [0.0, 0.0, self.search_altitude]           # will be set during once armed
+        self.waypoint_solar_panel = [0.0, 0.0, self.search_altitude]    # should receive output from drone mapping
+        self.waypoint_solar_panel_distance = 5.0                        # otherwise if not accurate, needs this and the function to calculate the coordinate
+                                                                        # gotta refer to where this parameter is used
+                                                                        # currently receiving accurate result output from drone mapping,
+                                                                        # so the waypoint to solar panel is defined to be 5 meter to the right from current drone orientation
+                                                                        # current yaw and world North considered (yaw = 0 is pointing to world North)
+                                                                        # refer to function *calculate_destination*
+
+        # self.angular_velocity_threshold = 0.01      # Threshold for angular velocity (radians per second) [unused, is for ultrasonic sensor]
+        self.time_threshold = 3.0                     # stable check time threshold
+        self.hori_grip_height = None                  # lidar reading recorded when payload is gripped successfully on ground (assumed flat), 
+                                                      # later will be used for deploy
+
+        self.lidar_gripper_offset_front = -0.15      ## ATTENTION   lidar_gripper (+: lidar infront of gripper; -: lidar behind of gripper)
+        self.lidar_ground_level = None                # lidar reading recorded when drone is on ground (origin, assumed flat)
+
+        self.waypoint = "HOME"          # waypoint = home / solar panel only
+        self.current_mode = None        # Current flight mode (nav state)
+        self.armed = False              # Armed state
+        self.custom_mode_done = False   # Ready for gripping (aruco-based descent enters hover mode)
+
+        self.aruco_descend = False      # If yes, current descent is based on aruco (custom mode does the alignment)
+                                        # If no, current descent is based on lidar only (set current position as anchor
+                                        #                                               use offboard mode to hover)
+
+        self.gripper_gripped = False    # Current gripper status (grip / release)
+        self.loop_once = False          # To run once only command after state change (needs to set to false before exiting current state)
+        self.drone_return = False       # Assume gripper from grip to release = drone next mission is return to drone home
+        self.is_active_cam_color = True # bnw cam for payload, color cam for other than payload, True = using color cam
+        self.isloaded = False           # sub to justification if the gripper has successfully gripped the payload
+                                       ## ATTENTION
+                                        # original idea is using aruco marker tracking (bnw cam), if detected when gripped means loaded
+                                        # but is better to use ultrasonic sensor to tell if there's anything beneath the drone during mid air
+                                        # which can tells if the payload is gripped (place ultrasonic sensor beneath drone)
+                                       ## THINGS TO DO ^^^^^^^^^^^^^^^^^
+
+        self.gripper_retry = False      # if gripper_gripped = true, isloaded = false -> gripper retry = True, restart aruco descent and grip
+        self.robot_return_flag = False  # sub to robot signal if the robot is needed to be return (not completed, needs integrate with robot)
                 
-        self.hover_start_time = None  # Time when hovering starts      
+        self.hover_start_time = None    # Time when hovering starts      
 
-        self.state = "SERVICE_SELECT"  # State machine state
-        self.running = True
+        self.state = "SERVICE_SELECT"   # State machine state
+        self.running = True             # is false then node stop, way to exit node after finishing operation (stop node spin)
 
         # Timer to control the state machine
-        self.timer = self.create_timer(0.05, self.timer_callback)  # 2Hz
+        self.timer = self.create_timer(0.05, self.timer_callback)  # 20Hz
 
-        # # Create logs directory if needed
+        # # Create logs directory if needed     # original logging, now using zd_logging
         # os.makedirs('logs', exist_ok=True)
         
         # # Open CSV file with additional lidar column
@@ -235,20 +270,19 @@ class ZDCommNode(Node):
     def lidar_range_callback(self, msg):
         self.above_ground_altitude = -float(msg.data)   # negative sign for FRD NED coordinate system
 
-    def ultrasonic_left_range32_callback(self, msg):
-        self.ultrasonic_left_range32 = float(msg.data)
+    # def ultrasonic_left_range32_callback(self, msg):
+    #     self.ultrasonic_left_range32 = float(msg.data)
    
-    def ultrasonic_right_range34_callback(self, msg):
-        self.ultrasonic_right_range34 = float(msg.data)
+    # def ultrasonic_right_range34_callback(self, msg):
+    #     self.ultrasonic_right_range34 = float(msg.data)
 
-    def isloaded_callback(self, msg):
-        self.isloaded = True if msg.data else False
+    def isloaded_callback(self, msg):                  ## THINGS TO DO
+        self.isloaded = True if msg.data else False     # apply ultrasonic sensor for payload presence detection when it supposed to present
 
     def robot_return_flag_callback(self, msg):
         self.robot_return_flag = True if msg.data else False
     
-    def solar_panel_angle_in_rad_callback(self, msg):
-
+    def solar_panel_angle_in_rad_callback(self, msg):   # should sub from solar panel mapping output for calculation
         self.get_logger().info(f'Published: {msg.data}')
     
     def local_position_callback(self, msg):
@@ -280,7 +314,7 @@ class ZDCommNode(Node):
         #     f"Position (NED): X={msg.x:.2f}, Y={msg.y:.2f}, Z={msg.z:.2f}, Yaw={np.degrees(msg.heading):.2f}°"
         # )
 
-    # def odometry_callback(self, msg):
+    # def odometry_callback(self, msg):                     # back then was using odometry
     #     """Callback to update the current position."""
     #     self.current_position = [
     #         float(msg.position[0]),  # X in NED
@@ -382,7 +416,7 @@ class ZDCommNode(Node):
 
     def get_marker_size(self, aruco_id):
         """Return the marker size based on the ArUco ID."""
-        return 0.5 if aruco_id == 2 else 0.17
+        return 0.5 if aruco_id == 2 else 0.14
         
     def publish_offboard_control_mode(self):
         """Publish OffboardControlMode message."""
@@ -484,7 +518,7 @@ class ZDCommNode(Node):
 
     #         self.get_logger().info(f"target position exceed limit\ntarget:({x},{y},{z}), current({current_x},{current_y},{current_z})")  
 
-    def publish_trajectory_setpoint(self, x, y, z, yaw, speed=0.5):
+    def publish_trajectory_setpoint(self, x, y, z, yaw, speed=0.5):     # uses velocity setpoint, smooth movement
         # Position error
         
         current_lidar_z = self.above_ground_altitude
@@ -542,7 +576,8 @@ class ZDCommNode(Node):
             self.trajectory_setpoint_publisher.publish(trajectory_msg)
 
             self.get_logger().info(f"target position exceed limit\ntarget:({x},{y},{z}), current({self.current_position[0]},{self.current_position[1]},{current_lidar_z})")
-    # def publish_trajectory_setpoint(self, x, y, z, yaw, speed=4.0):
+    
+    # def publish_trajectory_setpoint(self, x, y, z, yaw, speed=4.0):       # uses position setpoint (flight controller own PID, jerking movement)
     #     """
     #     Publishes a trajectory setpoint while ensuring correct handling of ENU (East-North-Up) 
     #     and FRD (Forward-Right-Down) coordinate frames.
@@ -580,7 +615,7 @@ class ZDCommNode(Node):
     #     trajectory_msg.yaw = yaw
     #     self.trajectory_setpoint_publisher.publish(trajectory_msg)
 
-    def publish_vehicle_command(self, command, param1=0.0, param2=0.0, param3=0.0):
+    def publish_vehicle_command(self, command, param1=0.0, param2=0.0, param3=0.0): # mode changer
         """Publish a VehicleCommand."""
         msg = VehicleCommand()
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
@@ -650,8 +685,8 @@ class ZDCommNode(Node):
         # if self.ultrasonic_left_range32 != None:
             # if self.ultrasonic_right_range34 != None:
                 if self.above_ground_altitude != None:
-                    if self.solar_panel_angle_in_rad != None:
-                        return True
+                    if self.solar_panel_angle_in_rad != None:       # angle should be None initially, then should sub the output of solar mapping actually
+                        return True                                 # but now is set to 0.0
                     else:
                         self.get_logger().info(f"solar_panel_angle not ready, set to 0")
                         self.solar_panel_angle_in_rad = 0.0
@@ -693,6 +728,25 @@ class ZDCommNode(Node):
         y = y0 + delta_y
 
         return x, y
+    
+    # STATES
+    # SERVICE SELECT        : CHOOSE DEPLOY / RETURN
+    # ARMING                : ARM AND TAKEOFF
+    # OFFBOARD TAKEOFF      : OFFBOARD TO DESIRED ALTITUDE WITH YAW ALIGNMENT
+    # HOVER                 : HOVER AND DECIDE WHAT TO DO NEXT
+    # PRE HOME DESCEND      : WITHOUT USING HOME LANDMARK, 
+    #                         THE DRONE DESCEND UNTIL CERTAIN ALTITUDE TO TRACK ARUCO MARKER (1 / 0)
+
+    # CUSTOM PRECISION DESCEND  : ARUCO-BASED DESCENT / LANDING, 
+    #                             IT IS DONE BY SWITCHING TO A CUSTOM MODE (refer to *precision_land* ROS2 C++ Package)
+    
+    # SERVO ACTION              : COMMAND SERVO FOR GRIPPING / RELEASE AND [HAVE THE DRONE HOVER VIA OFFBOARD (IF NEEDED)]
+    # ASCEND                    : ASCEND AFTER SERVO ACTION (OFFBOARD)
+
+    # WAYPOINT SOLAR PANEL & WAYPOINT HOME (OFFBOARD)
+    
+    # DEPLOY DESCEND            : BLINDED DESCENT FOR DEPLOYING ROBOT ON SOLAR PANEL (USING ALTITUDE ONLY)
+    # COMPLETE                  : LAND
 
     def timer_callback(self):        
         """Main loop that implements the state machine."""
@@ -700,13 +754,15 @@ class ZDCommNode(Node):
             if not self.loop_once:
                 self.hover_start_time = time.time()
                 self.loop_once = True
-            if time.time() - self.hover_start_time >= 1.5:
+            if time.time() - self.hover_start_time >= 1.5:  # delay without sleep
                 # if (True):                      # SIM
                 if (self.pre_flight_check()): # ACTUAL
+                    # # initialize
                     servo_msg = Int32()
                     servo_msg.data = RELEASE
                     self.servo_command_publisher.publish(servo_msg)
                     
+                    # # set origin
                     self.origin_position[0] = round(self.current_position[0], 1)
                     self.origin_position[1] = round(self.current_position[1], 1)
 
@@ -752,29 +808,38 @@ class ZDCommNode(Node):
         
 
         elif self.state == "ARMING":
+            # # reset mode to hold mode
             if not self.loop_once:
                 if (self.current_mode != 4 and self.current_mode != 18 and self.current_mode != 5):
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LOITER)
                 self.loop_once = True
-            if not self.armed:              # ensure arm and take off (repeatedly send signal)
+
+            # # ensure arm and take off (repeatedly send signal)
+            if not self.armed:              
                 self.arm_drone()
                 self.publish_takeoff()
             elif self.hover_start_time is None:
                 self.hover_start_time = time.time()
-            elif time.time() - self.hover_start_time >= 10.0:
+            elif time.time() - self.hover_start_time >= 10.0:   # delay without sleep
                 self.state = "OFFBOARDTAKEOFF"
                 self.loop_once = False
                 self.hover_start_time = None
-                self.anchor_position[3] = self.anchor_position[3] + math.radians(90)  # right turn 90 deg (cw) facing solar panel 
+               ## Important
+                # The algorithm designed is to place drone in a way its right hand side facing the solar panel
+                # can be set to facing solar panel by deleting those math.radians(90)
+                # right turn 90 deg (cw) facing solar panel
+                self.anchor_position[3] = self.anchor_position[3] + math.radians(90)   
 
 
         elif self.state == "OFFBOARDTAKEOFF":
+            # OFFBOARD TAKEOFF: OFFBOARD TO DESIRED ALTITUDE WITH YAW ALIGNMENT
             # if not self.current_mode == 14:
             #     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)
             if not self.loop_once:
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)
-                self.publish_offboard_control_mode()
-                self.loop_once = True
+                self.publish_offboard_control_mode()    # offboard control, trajectory setpoint needs to be published tgt
+                self.loop_once = True                   # during offboard mode, ^^^ these two needs to maintain at >2Hz to stay in offboard mode
+                # # for terminal logging
                 if self.service_mode == 'D':
                     takeoff_altitude = self.pre_home_descend_altitude
                 else:
@@ -785,7 +850,7 @@ class ZDCommNode(Node):
                 self.publish_offboard_control_mode()
                 self.publish_trajectory_setpoint(x=self.origin_position[0], y=self.origin_position[1], z=z, yaw=self.anchor_position[3])
                 
-
+            # # actual control (offboard control yaw align to facing solar panel + ascend to desired altitude)
             if self.service_mode == 'D':
                 takeoff_altitude = self.pre_home_descend_altitude
             else:
@@ -804,21 +869,24 @@ class ZDCommNode(Node):
             if self.stable_check(isgood):
                 self.state = "HOVER"
                 self.loop_once = False
-                # if self.service_mode == "R":
-                #     self.anchor_position[3] = self.anchor_position[3] + math.radians(90)
                 
 
         elif self.state == "HOVER":
+            # HOVER: HOVER AND DECIDE WHAT TO DO NEXT
             if not self.loop_once:
+                # # Hover uses hold mode
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_LOITER) # Loiter mode
                 self.loop_once = True
                 self.hover_start_time = time.time()
                 self.get_logger().info("Hovering 2 sec, calling next action")
+                # # in case it doesn't react
                 if not self.drone_return and self.service_mode == "D":
                     self.publish_active_cam_color(False)
                     self.publish_aruco_info(3)
             if time.time() - self.hover_start_time > 2.0:  # Hover for 2 seconds
                 self.hover_start_time = None
+                # # change according to algorithm, currently is set to be like this
+                # # 
                 if self.drone_return:
                     self.state = "PRE_HOME_DESCEND"
                     self.publish_aruco_info(0)
@@ -839,7 +907,7 @@ class ZDCommNode(Node):
 
 
         elif self.state == "PRE_HOME_DESCEND":
-            # descend_rate = 0.2
+            # PRE HOME DESCEND: WITHOUT USING HOME LANDMARK, THE DRONE DESCEND UNTIL CERTAIN ALTITUDE TO TRACK ARUCO MARKER (1 / 0)
             if (self.current_mode != 14 and self.current_mode != 18 and self.current_mode != 5):
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, MAIN_VEHICLE_MODE_OFFBOARD)  # Switch to Offboard mode
             if not self.loop_once:
@@ -860,6 +928,7 @@ class ZDCommNode(Node):
 
 
         elif self.state == "CUSTOM_PRECISION_DESCEND":  # if id=0 land, else hover
+            # CUSTOM PRECISION DESCEND: ARUCO-BASED DESCENT / LANDING, IT IS DONE BY SWITCHING TO A CUSTOM MODE (refer to *precision_land* ROS2 C++ Package)
             if (self.current_mode != 23 and self.current_mode != 18 and self.current_mode != 5):
                 self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, SWAP_TO_SUB_VEHICLE_MODE, SUB_VEHICLE_MODE_CUSTOM_MODE)  # Switch to custom precision land (hover) mode
             if not self.loop_once:
@@ -870,7 +939,6 @@ class ZDCommNode(Node):
             
             if (self.aruco_id == 0):
                 self.state = "COMPLETE"
-                self.aruco_descend = True
                 self.get_logger().info("Precision Landing on Drone Home automatically...")
 
             elif self.custom_mode_done:  # Wait for custom precision land (hover) mode completion signal
@@ -882,10 +950,12 @@ class ZDCommNode(Node):
         
 
         elif self.state == "SERVO_ACTION":
+            # SERVO ACTION: COMMAND SERVO FOR GRIPPING / RELEASE AND [HAVE THE DRONE HOVER VIA OFFBOARD (IF NEEDED)]
             # Publish servo command
             servo_msg = Int32()
             if not self.loop_once:
                 if not self.aruco_descend:
+                    # # switch to offboard to hold and align position (can try hold actually)
                     self.anchor_position[0] = self.current_position[0]
                     self.anchor_position[1] = self.current_position[1]
                     # self.anchor_position[2] = self.current_position[2]
@@ -897,18 +967,21 @@ class ZDCommNode(Node):
                 self.loop_once = True
                 self.hover_start_time = time.time()
                 if not self.gripper_gripped:
+                    # # if not grip, grip
                     servo_msg.data = GRIP_STRONG
                     self.gripper_gripped = True
                     # self.hori_grip_height = self.current_position[2]      # SIM
                     self.hori_grip_height = self.above_ground_altitude      # ACTUAL
                     self.get_logger().info("Grip - servo command published.")
                 else:
+                    # # if grip, release
                     servo_msg.data = RELEASE
                     self.gripper_gripped = False
                     self.drone_return = True 
                     self.get_logger().info("Release - servo command published.")
                 self.servo_command_publisher.publish(servo_msg)
             elif (time.time() - self.hover_start_time) >= 1.0 and self.gripper_retry:
+                # # release then grip again
                 self.gripper_retry = False
                 servo_msg.data = GRIP_STRONG
                 self.gripper_gripped = True
@@ -916,6 +989,7 @@ class ZDCommNode(Node):
                 self.get_logger().info("Grip - servo command published.")
                 self.servo_command_publisher.publish(servo_msg)
             elif time.time() - self.hover_start_time >= 3.0:
+                # # ascend
                 self.anchor_position[0] = self.current_position[0]
                 self.anchor_position[1] = self.current_position[1]
                 # self.anchor_position[2] = self.current_position[2]
@@ -932,6 +1006,7 @@ class ZDCommNode(Node):
             self.publish_trajectory_setpoint(x=self.anchor_position[0], y=self.anchor_position[1], z=self.anchor_position[2], yaw=self.anchor_position[3])
 
         elif self.state == "ASCEND":
+            # ASCEND: ASCEND AFTER SERVO ACTION (OFFBOARD)
             self.publish_offboard_control_mode()
             if self.drone_return and self.waypoint == "HOME":
                 takeoff_altitude = self.pre_home_descend_altitude
@@ -1010,13 +1085,13 @@ class ZDCommNode(Node):
                     # self.state = "ALIGN_SOLAR_PANEL"
                     # Begin aligning with solar panel (yawing)
                     # self.get_logger().info("Yawing until ultrasonic sensor readings tally...")
-                    self.get_logger().info(f"Target altitude: {self.origin_position[2] + self.hori_grip_height + self.lidar_gripper_offset_front*math.tan(self.solar_panel_angle_in_rad) + self.deploy_altitude}")
+                    # self.get_logger().info(f"Target altitude: {self.origin_position[2] + self.hori_grip_height + self.lidar_gripper_offset_front*math.tan(self.solar_panel_angle_in_rad) + self.deploy_altitude}")
                 else:
                     self.publish_active_cam_color(False)
                     self.state = "CUSTOM_PRECISION_DESCEND" #id3
                 self.loop_once = False
             
-
+        # # Aborted
         # elif self.state == "ALIGN_SOLAR_PANEL":
         #     if not self.loop_once:
         #         self.hover_start_time = time.time()
@@ -1061,6 +1136,7 @@ class ZDCommNode(Node):
 
 
         elif self.state == "DEPLOY_DESCEND":
+            # DEPLOY DESCEND: BLINDED DESCENT FOR DEPLOYING ROBOT ON SOLAR PANEL (USING ALTITUDE ONLY)
             if not self.loop_once:
                 self.loop_once = True
                 self.deploy_altitude = self.hori_grip_height + self.lidar_gripper_offset_front * math.tan(self.solar_panel_angle_in_rad) + self.z_offset
