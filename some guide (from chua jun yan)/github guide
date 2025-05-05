@@ -1,0 +1,42 @@
+# push
+git add .
+git commit -m "Your commit message"
+git push
+
+# pull
+git pull
+
+# idk
+git push -u origin main
+
+# if nid overwrite current folder (when current folder is modified and different with repo)
+git reset --hard HEAD
+
+
+cd ~/zephyrDock && source install/setup.bash && ros2 launch zd_px4_comm MAIN_zd_launch.py
+
+cd ~/zephyrDock && source install/setup.bash
+
+ros2 run zd_px4_comm zd_px4_command
+
+ros2 run zd_px4_comm zd_logging
+
+cd ~/zephyrDock && source install/setup.bash && ros2 topic hz /bnw_camera/image_raw
+
+cd ~/zephyrDock && source install/setup.bash && ros2 topic hz /bnw_camera/image_proc
+ 
+cd ~/zephyrDock && source install/setup.bash && ros2 topic echo /bnw_camera/target_pose
+
+cd ~/zephyrDock && source install/setup.bash && ros2 topic echo /fmu/out/vehicle_odometry
+
+cd ~/Videos/Screencasts && ffmpeg -i "Screencast from 04-05-2025 02:14:07 PM.webm" -filter:v "fps=24" Apr0525_0214.mp4
+
+# scrcpy
+
+  648  	
+  649  adb shell ip route
+  650  adb connect 192.168.210.125:5555
+  651  scrcpy --stay-awake --turn-screen-off -m 1920
+  652  scrcpy --orientation 270 --stay-awake --turn-screen-off -m 1920
+
+

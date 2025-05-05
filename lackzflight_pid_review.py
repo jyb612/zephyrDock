@@ -3,7 +3,7 @@
 
 # USED TO REVIEW CUSTOM PRECISION DESCENT MODE PID PERFORMANCE #
 # OUTDATED BUT SUITABLE FOR FILE THAT IS NOT READABLE VIA LATEST VER. #
-# LOG NAME IS pid_logging / pid_sim_logging IN /logs #
+# LOG NAME IS pid_log / pid_sim_log IN /logs #
 
 
 

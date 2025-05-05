@@ -1,0 +1,42 @@
+Deploy
+arming	-anchor_yaw
+takeoff(low)
+hover	-id1
+custom precision descend
+servo action	-grip
+ascend(high)
+waypoint solar panel 
+align solar panel -anchor_yaw
+deploy descend
+servo action	-release -return true
+ascend(high)
+waypoint home
+pre home descend
+custom precision descend
+
+Return
+arming	-anchor_yaw
+takeoff(high)
+hover	-id3
+waypoint solar panel
+custom precision descend
+servo action
+ascend(high)
+waypoint home
+pre home descend
+custom precision descend
+servo action
+ascend(low)
+custom precision descend
+
+
+sensors
+1. camera (bnw) for Robot 3	/camera
+2. camera (color) for everything other than Robot 3
+3. lidar rangefinder for altitude
+4. ultrasonic left
+5. ultrasonic right 
+
+colcon build --symlink-install
+source install/setup.bash
+ros2 run drone_gui drone_gui

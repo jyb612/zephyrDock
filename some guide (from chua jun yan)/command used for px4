@@ -1,0 +1,165 @@
+// MicroXRCEAgent
+MicroXRCEAgent udp4 -p 8888
+// PX4
+make px4_sitl gz_x500
+	// in case folder change or source prob, rebuild
+		cd zephyrDock
+		git clone https://github.com/PX4/PX4-Autopilot.git --recursive
+		bash ./PX4-Autopilot/Tools/setup/ubuntu.sh
+		cd PX4-Autopilot/
+		make px4_sitl
+		// might delete gz content
+		cd ~/zephyrDock/pX4-Autopilot
+		git submodule update --init --recursive
+		make distclean
+		make px4_sitl gz_x500
+		export PX4_DIR=~/zephyrDock/pX4-Autopilot
+
+// ROS2
+ros2 launch px4_ros_com sensor_combined_listener.launch.py
+	// sourcing
+		// consider to edit bashrc
+		alias ws1='source /path/to/workspace_1/install/local_setup.bash'
+		alias ws2='source /path/to/workspace_2/install/local_setup.bash'
+		// manual
+		source ~/.bashrc
+		source /install/local.setup.bash
+		
+// ign gz sim harmonic
+sudo apt-get update
+sudo apt-get install curl lsb-release gnupg
+
+sudo curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+sudo apt-get update
+sudo apt-get install gz-harmonic
+
+	// for uninstall
+	sudo apt remove gz-harmonic && sudo apt autoremove
+
+// ros2 ign bridge
+apt-get install ros-humble-ros-gzharmonic
+
+// delete ign gz sim fotrress including ros2 humble
+
+
+// hold ros2 (avoid being deleted)
+sudo apt-mark hold ros-humble-*
+
+// GZ SIM RESOURCE PATH
+export GZ_SIM_RESOURCE_PATH=~/zephyrDock/pX4-Autopilot/Tools/simulation/gz/models:/usr/share/gz-sim8/worlds
+
+// gz bridge harmonic ros2
+	// Aruco tracker
+	ros2 run ros_gz_bridge parameter_bridge /camera@sensor_msgs/msg/Image@gz.msgs.Image
+	ros2 run ros_gz_bridge parameter_bridge /camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo
+	
+	
+// rebuild for select package3
+cd ~/zephyrDock/tracktor-beam
+
+colcon build
+source install/setup.bash
+ros2 launch px4_offboard MAIN_offboard_velocity_control.launch.py
+
+ros2 run waypoint_control waypoint_control_node
+
+ros2 launch px4_offboard MAIN_offboard_velocity_control.launch.py
+
+// gz sim kill process
+ps aux | grep gz
+kill <number>
+
+// scrcpy
+scrcpy --stay-awake --turn-screen-off -m 1920
+
+// CH341 CH340
+sudo modprobe ch341
+lsmod | grep ch341
+
+// brightness
+sudo ddcutil setvcp 10 30
+sudo ddcutil detect
+sudo ddcutil getvcp 10
+
+// AR0234 camera test
+sudo apt install qv4l2
+ros2 run rqt_image_view rqt_image_view
+sudo apt install ros-humble-v4l2-camera
+v4l2-ctl --list-devices
+ros2 param list /v4l2_camera
+ros2 run v4l2_camera v4l2_camera_node --ros-args -p video_device:="/dev/video2"
+
+# Remove the virtual environment as it's not helping
+rm -rf ~/camera_cal_env
+
+# Install a compatible version of NumPy
+pip install 'numpy<2.0'
+
+// Camera calibration yaml
+chmod 644 calcam_color.yaml
+groups $USER	
+sudo usermod -a -G video $USER
+newgrp video
+
+// color plug first
+ros2 run v4l2_camera v4l2_camera_node \
+  --ros-args \
+  -r __ns:=/color_camera \
+  -p video_device:="/dev/video0" \
+  -p camera_info_url:="file:///home/junyan/zephyrDock/tracktor-beam/src/ros2_v4l2_camera/config/calcam_color.yaml"
+  
+// bnw plug second
+ros2 run v4l2_camera v4l2_camera_node \
+  --ros-args \
+  -r __ns:=/bnw_camera \
+  -p video_device:="/dev/video4" \
+  -p camera_info_url:="file:///home/junyan/zephyrDock/tracktor-beam/src/ros2_v4l2_camera/config/calcam_bnw.yaml"
+
+// aruco marker tracking
+# Default behavior (unchanged)
+ros2 run aruco_tracker aruco_tracker
+
+# Specify color camera namespace
+ros2 run aruco_tracker aruco_tracker \
+    --ros-args -p camera_namespace:="/color_camera"
+
+# Specify black and white camera namespace
+ros2 run aruco_tracker aruco_tracker \
+    --ros-args -p camera_namespace:="/bnw_camera"
+    
+// servo testing (modbus rtu)
+sudo dmesg | grep tty
+lsusb
+sudo apt update
+sudo apt install mbpoll
+
+// serial bus servo ros2
+ros2 run your_servo_control servo_controller --ros-args -p mode:=read -p dec:=257
+ros2 run your_servo_control servo_controller --ros-args -p mode:=write -p dec:=128 -p targetpos:=3072
+
+ros2 run your_servo_control servo_controller
+ros2 topic pub /target_position_command std_msgs/msg/Int32 "{data: 2048}"
+
+// aruco marker topic
+ros2 topic pub /aruco_id std_msgs/msg/Int32 "data: 0"
+ros2 topic pub /marker_size std_msgs/msg/Float64 "data: 0.18"
+
+ros2 topic pub /aruco_id std_msgs/msg/Int32 "data: 2"
+ros2 topic pub /marker_size std_msgs/msg/Float64 "data: 0.5"
+
+// libraries
+sudo apt install ros-humble-tf2 ros-humble-tf2-ros
+
+
+colcon build --packages-select aruco_tracker
+source install/setup.bash
+ros2 launch zd_px4_comm MAIN_zd_launch.py 
+
+
+
+
+
+
+
+

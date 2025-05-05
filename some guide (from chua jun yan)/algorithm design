@@ -1,0 +1,113 @@
+// parameter
+metric system (meter)
+actual roof altitude (two storey)		7meter
+						
+						# simplified for simulation
+						
+prototype roof altitude				2meter#
+set drone altitude for searching		5meter#
+set drone altitude for releasing payload	0.5meter#
+
+
+coordinate
+
+    	+		|	+	
+ 	x	+y-	|	z
+	-		|	-
+waypoint (x,y,z)	
+set drone home	 		 0,0,0.01	(aruco marker 4x4 id 0 0.15)
+set bot home	 		 0,2,0.01	(aruco marker 4x4 id 1 0.15)
+set home landmark		 1,1,0.01	(aruco marker 4x4 id 2 0.5)
+set solarpanel landing point	-5,0,2.01	(*change accordingly)
+set solarpanel depart point	-5,5,2.01	(*change accordingly)
+
+extra: bot aruco marker 4x4 id 3 0.15
+
+
+world setup
+building 5x5x2
+
+
+// begin
+LOOP1
+gripper check
+drone takeoff
+drone ascend until altitude 5 	 	-search
+drone aruco detect (4x4 id2 0.5) 	-precision land I (bot home)
+drone descend until altitude 2   
+drone aruco detect (4x4 id0 0.15)	-precision land II (bot home)
+drone descend until altitude 0.5	*distance sensor
+gripper grip (attach)
+drone ascend until altitude 5		-search
+drone waypoint to solarpanel landing point *(-5,0,5)	-defined
+drone descend (until shortest vertical distance < 1)	-defined
+drone slowly descend (until bot landed !!!!!!!!!!!!)	-defined
+gripper loose (detach)
+drone ascend until altitude 5				-search
+drone waypoint to home landmark
+drone aruco detect (4x4 id2 0.5) 	-precision land I (drone home)
+drone descend until altitude 2   
+drone aruco detect (4x4 id1 0.15)	-precision land II (drone home)
+drone descend until unarm
+
+gripper check
+drone takeoff
+drone ascend until altitude 5 	 				-search
+drone waypoint to solarpanel depart point *(-5,5,5)		-defined
+drone aruco detect (4x4 id3 0.15) 				-precision land I (bot)
+drone slowly descend (until able to grip!!!!!!!!!!!)	*distance sensor
+gripper grip (attach)
+drone ascend until altitude 5 	 			-search
+drone waypoint to home landmark
+drone aruco detect (4x4 id2 0.5) 			-precision land I (bot home)
+drone descend until altitude 2   
+drone aruco detect (4x4 id0 0.15)			-precision land II (bot home)
+drone slowly descend (until bot landed !!!!!!!!!!!!)	-defined
+gripper loose (detach)
+drone ascend until altitude 5 	 			-search
+drone waypoint to home landmark
+drone aruco detect (4x4 id2 0.5) 	-precision land I (drone home)
+drone descend until altitude 2   
+drone aruco detect (4x4 id1 0.15)	-precision land II (drone home)
+drone descend until unarm
+
+
+
+1. arm and take off to certain altitudeA
+2. locate marker id 2 then descend to certain altitude B
+3. locate marker id 1 then descend to relative distance to marker at certain distance then hovers, then actuator acts to grip item
+4. after that ascend back to certain altitude A
+5. waypoint to certain waypoint then locate marker id 3 then descend until certain limit that indicates the payload has landed then hovers, actuator acts to release the item
+6. ascend back to altitude A
+7. waypoint back to home waypoint
+8. locate marker id 2 then descend to certain altitude B
+9. locate marker id 0 then descend until land
+
+
+If say I have a source code that is ready to do precision landing of a aruco marker, but it is triggered by having a custom mode in qgroundcontrol called 'PrecisionLandingCustom'
+
+would u suggest me to continue use it like that or,
+
+because my algorithm needed is having the drone to
+1. take off from origin, then hover
+2. precision descend follow aruco marker id 2 (go descend and near the ground)
+3. at certain altitude it should switch the target to aruco marker id 3 (target to be clamped) (below the target theres aruco marker 1 that is unseenable for now) then continue to descend to certain altitude and hold its position (hovering), then the actuator do gripping
+4. the drone should carry the thing and ascend back to hovering alitutde
+5. the drone should waypoint to a place above roof (preset waypoint)
+6. the drone should descend until certain altitude and release the payload via actuator
+7. the drone then fly back to waypoint above origin (preset origin)
+8. the drone then precision descend follow aruco marker id 2 (landmark)
+9. at certain altitude it should switch target to aruco marker id 0 to land on drone home
+10. later when signal comes it should ascend and go back to roof waypoint and descend follow auroco marker id 3 and hover to clamp the target and carry it back to origin
+11. descend according to aruco marker id 3 (landmark), then until certain altitude switch target to aruco marker 1 (home of the payload), then finally until certain alitude release the payload and then the 
+drone shoudl ascend and land back to drone home accordingly
+
+dont code first, I am just asking your idea if I should remain the custom mode
+and how should I do it since theres so many steps of course we do step by step, like for the take off, descend, gripping, ascend back part
+
+but in order to integrate the precision landing and the offboard control 
+how would u suggest 
+
+currently we have node to to take off, hover, and waypoint
+and another node to do aruco marker tracking (according to id, then output displacement /target_pose which will feed to another node
+that is the precision landing node I mentioned, it is launched as custom mode at qgroundcontrol (hold  mode -> precisionlandingcustom normally when to drone is hovering in hold mode)
