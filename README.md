@@ -17,6 +17,67 @@ Key Modifications:
 The core functionality and initial setup process is based on ARK Electronics' open-source project:
 ARK Electronics Tracktor Beam
 
+
+
+## Manual
+First of all,
+Play with simulation before trying it on actual drone, link below leads to simulation git: 
+  https://github.com/jyb612/simZephyrDock
+
+while the similar setup procedure apply for actual drone testing, the onboard computer should use the current git
+```
+git clone https://github.com/jyb612/zephyrDock.git
+```
+
+To begin testing, run launch program via
+```
+ros2 launch zd_px4_comm MAIN_zd_launch.py 
+```
+then verify is LiDAR reading, camera topics, and the corresponding image_proc topics (bnw & color) behave normal.
+then check if custom mode for precison landing successfully be created (from QGroundControl check if there's an extra mode or at launch terminal has written registered id...)
+
+Before running the program, 
+* make sure drone GPS 3D fix ready, 
+* drone has sufficient battery power, 
+* make sure remote is functioning (can try swapping mode or arm to see drone & QGroudnControl responses)
+* testing environment setup done (ArUco marker placements)
+  ArUco marker id 0 as drone home
+  ArUco marker id 1 as robot home
+  ArUco marker id 3 as robot (robot should be placed on ArUco id 1, but for testing without gripping, do not overlap them)
+  ArUco marker id 3 should be placed at solar panel waypoint if Return mode is to be tested
+* be ready to abort program via ctrl + c and swap to land mode (via remote) for emergency
+* record flight and screen
+
+If everything is fine, run logging via
+```
+ros2 run zd_px4_comm zd_logging
+```
+
+Run program (state manager) via
+```
+ros2 run zd_px4_comm zd_px4_command 
+```
+
+Follow the prompt to choose either of the modes (Deploy / Return)
+
+When testing ended, ctrl + c to stop logging
+
+For flight review, run in terminal
+```
+python historical_data_analysis.py
+```
+
+File select /logs/zd_sim_logging_... the latest csv file
+
+and
+
+```
+python flight_pid_review.py 
+```
+
+File select /logs/pid_log_... the latest csv file
+
+
 ## Questions
 Message Chua Jun Yan on LinkedIn for questions or email me at chua.junyan0612@gmail.com
 
@@ -75,7 +136,7 @@ nano ~/.bashrc
 
 Navigate to the directory you would like to place the worskpace and then run the following
 ```
-git clone https://github.com/ARK-Electronics/tracktor-beam.git
+git clone https://github.com/jyb612/zephyrDock.git
 ```
 Then navigate into the workspace:
 ```
@@ -103,7 +164,12 @@ Source the workspace
 source install/setup.bash 
 ```
 ### Run the example
+!!! YOU CAN NOW REFER TO THE GUIDE FOR ZEPHYRDOCK ABOVE
+!!! BELOW IS FOR VERIFYING BASIC FUNCTION
+!!! TO RUN THE LATEST RESULT SCROLL TO TOP CONTINUE WITH THE MANUAL
 
+
+!!! BELOW IS FOR SIMULATION
 #### Run the simulation environment
 Launch PX4 sim
 ```
